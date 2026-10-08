@@ -6,6 +6,14 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'seo-stat',
   description: 'Project-first SEO content workspace.',
+  manifest: '/seo-stat/branding/site.webmanifest',
+  icons: {
+    icon: [
+      { url: '/seo-stat/branding/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/seo-stat/branding/favicon-16x16.png', type: 'image/png', sizes: '16x16' },
+    ],
+    apple: [{ url: '/seo-stat/branding/apple-touch-icon.png', sizes: '180x180' }],
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
