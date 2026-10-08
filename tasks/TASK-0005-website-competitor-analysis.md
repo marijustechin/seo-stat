@@ -108,6 +108,30 @@ schedules, Google metrics, and a general workflow builder.
 - Recommended next task: project-scoped content and workflow/schedule/execution
   management.
 
+## Follow-up: fix the analysis-start request
+
+- Defect: the shared web helper `apiFetch` always set `Content-Type:
+  application/json`, so bodyless POSTs — starting an analysis and also archiving
+  and restoring a project — sent an empty JSON body that Fastify rejected with
+  "Body cannot be empty when content-type is set to 'application/json'".
+- Fix: `apiFetch` now sets Content-Type only when a request body is present, so
+  bodyless actions omit it. Backend JSON validation was not weakened (Fastify
+  still rejects an empty body that declares `application/json`).
+- Missing provider handling: the analysis panel reads `/system/status`, shows a
+  clear "AI provider is not configured" state, and disables the action while
+  unavailable; start errors are mapped to friendly messages instead of surfacing
+  the raw HTTP/parser error. The backend configuration check is retained.
+- Regression test: `apps/web/src/shared/api/client.spec.ts` exercises the actual
+  `apiFetch` helper against a real Fastify server (bodyless POST succeeds; a
+  request with a JSON body sends the header and body; GET sends no header; and an
+  empty body with `application/json` is rejected, documenting the defect).
+- Competitors remain optional; a new integration test covers starting and
+  completing an analysis with zero competitors.
+- Verification: web unit tests 11 passed (5 regression), API e2e 19 passed
+  (including the zero-competitor case); typecheck, lint, build, and harness pass.
+- Live: verified after deployment (see below); real AI execution remains pending
+  provider configuration.
+
 ## State
 
 - Implementation: complete

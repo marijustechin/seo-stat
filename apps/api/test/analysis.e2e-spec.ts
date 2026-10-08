@@ -181,6 +181,15 @@ describe('Analysis (integration, mocked provider)', () => {
     expect(run.evidence.websiteReadable).toBe(true);
   });
 
+  it('starts and completes an analysis with zero competitors', async () => {
+    const res = await call('POST', '/projects', { name: 'Analysis No Competitors' });
+    const projectId = res.json().id as string;
+    created.push(projectId);
+    const run = await startAndWait(projectId);
+    expect(run.status).toBe('completed');
+    expect(run.inputSnapshot.competitorUrls).toEqual([]);
+  });
+
   it('applies only the selected fields and never changes the publishing policy', async () => {
     const projectId = await createProject('Analysis Apply');
     const run = await startAndWait(projectId);

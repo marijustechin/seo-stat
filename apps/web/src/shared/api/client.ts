@@ -25,9 +25,29 @@ function messageFrom(body: unknown, status: number): string {
   return `Request failed (${status})`;
 }
 
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers = { 'content-type': 'application/json', ...(init.headers ?? {}) };
-  const response = await fetch(apiUrl(path), { ...init, headers, cache: 'no-store' });
+/**
+ * Fetch JSON from the API under the same origin.
+ *
+ * Content-Type is only set when a body is present: Fastify rejects an empty
+ * body that declares `application/json` ("Body cannot be empty when
+ * content-type is set to 'application/json'"), so bodyless actions such as
+ * starting an analysis or archiving a project must omit it.
+ *
+ * `baseUrl` is for tests only; the application always uses the same origin.
+ */
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+  baseUrl?: string,
+): Promise<T> {
+  const headers = new Headers(init.headers);
+  const hasBody = init.body !== undefined && init.body !== null;
+  if (hasBody && !headers.has('content-type')) {
+    headers.set('content-type', 'application/json');
+  }
+
+  const target = baseUrl ? `${baseUrl.replace(/\/+$/, '')}${apiUrl(path)}` : apiUrl(path);
+  const response = await fetch(target, { ...init, headers, cache: 'no-store' });
 
   const text = await response.text();
   let body: unknown;
