@@ -116,6 +116,12 @@ if [ -n "$previous" ] && [ -d "$previous" ]; then
   systemctl --user restart seo-stat-api.service seo-stat-web.service || true
   record verify "$sha" failed "health check failed; restored $(basename "$previous") (database unchanged)"
 else
-  record verify "$sha" failed "health check failed; no previous release to restore"
+  # No previous release to restore. Stop the services and clear `current` so a
+  # later poll can retry this SHA once the cause is fixed (for example, after
+  # the one-time database setup).
+  log "no previous release; stopping services and clearing current for retry"
+  systemctl --user stop seo-stat-api.service seo-stat-web.service || true
+  rm -f "$ROOT/current"
+  record verify "$sha" failed "health check failed; no previous release; cleared current for retry"
 fi
 exit 1
