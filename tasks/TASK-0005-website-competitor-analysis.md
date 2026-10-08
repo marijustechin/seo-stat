@@ -129,8 +129,14 @@ schedules, Google metrics, and a general workflow builder.
   completing an analysis with zero competitors.
 - Verification: web unit tests 11 passed (5 regression), API e2e 19 passed
   (including the zero-competitor case); typecheck, lint, build, and harness pass.
-- Live: verified after deployment (see below); real AI execution remains pending
-  provider configuration.
+- Live after automatic deployment (SHA `5788aff`, CI run 37784900687 succeeded):
+  through `https://192.168.8.50/seo-stat/`, `POST .../analysis` with no
+  Content-Type reaches the backend and returns `503 {"message":"Analysis is not
+  configured on the server."}` (the parser error is gone), while the same POST
+  with `Content-Type: application/json` and an empty body still returns `400`
+  (Fastify contract preserved; validation not weakened). `/system/status` reports
+  `configured:false`, the Settings page loads (200), and health/unrelated apps
+  remain 200. Real AI execution remains pending provider configuration.
 
 ## State
 
