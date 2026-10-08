@@ -15,5 +15,7 @@ fi
 mkdir -p "$ROOT/backups"
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 out="$ROOT/backups/seo_stat-${stamp}.sql.gz"
-pg_dump "$DATABASE_URL" | gzip > "$out"
+# psql/pg_dump do not understand Prisma's ?schema=... query parameter.
+db_url="${DATABASE_URL%%\?*}"
+pg_dump "$db_url" | gzip > "$out"
 printf 'backup written: %s\n' "$out"

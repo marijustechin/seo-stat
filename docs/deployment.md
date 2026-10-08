@@ -72,8 +72,9 @@ never committed and never printed.
   migrations. There are none yet, so this step is currently a no-op.
 - Before applying migrations, `deploy/scripts/backup-db.sh` writes a compressed
   `pg_dump` to `/srv/seo-stat/backups/seo_stat-<timestamp>.sql.gz`.
-- Restore: `gunzip -c /srv/seo-stat/backups/<file>.sql.gz | psql "$DATABASE_URL"`.
-  Restore into a maintenance window; it overwrites current data.
+- Restore: `gunzip -c /srv/seo-stat/backups/<file>.sql.gz | psql "${DATABASE_URL%%\?*}"`
+  (strip Prisma's `?schema=` parameter, which `psql` does not accept). Restore
+  into a maintenance window; it overwrites current data.
 
 ## Rollback semantics
 

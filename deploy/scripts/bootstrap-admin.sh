@@ -44,7 +44,9 @@ db_password=""
 if [ -r "$api_env" ]; then
   db_password="$(sed -n 's#^DATABASE_URL=postgresql://[^:]*:\([^@]*\)@.*#\1#p' "$api_env" | head -1)"
 fi
-if [ -z "$db_password" ]; then
+# Treat the shipped placeholder as "no password yet" so the first real run
+# generates one instead of reusing the literal placeholder.
+if [ -z "$db_password" ] || [ "$db_password" = "REPLACE_WITH_DB_PASSWORD" ]; then
   db_password="$(head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 28)"
 fi
 
