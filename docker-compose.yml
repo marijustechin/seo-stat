@@ -1,0 +1,24 @@
+# Isolated development PostgreSQL for seo-stat.
+# Host port 5433 is used deliberately to avoid clashing with any other local
+# PostgreSQL instance. These credentials are local development only and are not
+# secrets.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: seo-stat-db
+    environment:
+      POSTGRES_USER: seostat
+      POSTGRES_PASSWORD: seostat
+      POSTGRES_DB: seo_stat
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - seo-stat-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seostat -d seo_stat"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  seo-stat-db-data:

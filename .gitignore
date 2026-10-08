@@ -1,9 +1,20 @@
 # Secrets and local configuration - must never be tracked
 .env
 .env.*
+!.env.example
 *.local
 secrets/
 config/local.*
+
+# Node / build output
+node_modules/
+.next/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Generated Prisma client (Prisma 7 outputs into the source tree)
+apps/api/src/generated/
 
 # Persistent/runtime data
 data/

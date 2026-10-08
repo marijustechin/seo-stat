@@ -1,0 +1,14 @@
+// seo-stat Prisma schema (Prisma 7).
+//
+// No domain tables are defined yet: this task only establishes connectivity.
+// The health check uses a raw `SELECT 1`, so no models are required.
+// The connection URL is configured in prisma.config.ts (not in this file).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

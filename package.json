@@ -1,0 +1,21 @@
+{
+  "name": "seo-stat",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Local-server toolkit for SEO content scheduling and reporting.",
+  "packageManager": "pnpm@11.26.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "validate:harness": "node scripts/validate-harness.mjs",
+    "verify:subpath": "node scripts/smoke-subpath.mjs"
+  }
+}

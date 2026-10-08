@@ -5,50 +5,79 @@ website publishing, LinkedIn publishing, and Google performance reporting.
 
 ## Current state
 
-Development harness only. There is **no application code** yet. No external
-accounts are connected, nothing is published, the server is not configured, and
-nothing is deployed. See `tasks/INDEX.md` for task tracking; the bootstrap task
-is `tasks/TASK-0001-bootstrap-harness.md`.
+Application foundation plus an unattended deployment pipeline. There is a
+TypeScript ESM pnpm workspace with a Next.js UI shell and a NestJS API, and CI
+produces a deployment artifact consumed by a server-side systemd user timer.
+**No scheduling, generation, publishing, or reporting** exists yet.
 
-The harness is version-controlled on GitHub at
-https://github.com/marijustechin/seo-stat with harness CI defined in
-`.github/workflows/harness.yml` (see below).
+- Public UI URL: https://192.168.8.50/seo-stat/
+- API prefix: `/seo-stat/api/` (same origin)
+- Stack: Node.js 24, TypeScript (ESM), Next.js 16 (App Router), NestJS 12 on
+  Fastify, Prisma 7 with PostgreSQL.
+- Ports: API `127.0.0.1:3011`, web `127.0.0.1:3012`.
 
 ## Repository layout
 
 ```
-AGENTS.md            Working rules for contributors/agents
+AGENTS.md            Working rules and authoritative architecture decisions
 README.md            This file
+apps/web             Next.js UI (src: app, widgets, features, entities, shared)
+apps/api             NestJS API (src: modules, database, config) + Prisma
+deploy/              systemd user units, deploy scripts, nginx include, bootstrap
 docs/                product, architecture, deployment notes
 tasks/               task lifecycle, template, records, index
-scripts/             harness validation (no dependencies)
+scripts/             harness validation and subpath smoke test (no dependencies)
 ```
 
-## Repository and CI
+## Commands
 
-- GitHub: https://github.com/marijustechin/seo-stat
-- Primary branch: `main`
-- CI: `.github/workflows/harness.yml` runs the harness validator on pushes and
-  pull requests to `main`, using Node 24, read-only `contents` permission, and
-  no package installation (the validator has no dependencies).
-
-## Harness validation
-
-One documented command verifies the harness:
+Run from the repository root. Requires Node.js 24 and pnpm; Docker is used only
+for the local development database. Commands work on Windows and Linux.
 
 ```
-node scripts/validate-harness.mjs
+pnpm install          # install workspace dependencies
+pnpm db:up            # start the isolated dev PostgreSQL (Docker, port 5433)
+pnpm db:down          # stop it
+pnpm dev              # run web (3012) and api (3011) in parallel
+pnpm build            # production builds for web and api
+pnpm typecheck        # TypeScript checks for both apps
+pnpm lint             # ESLint for both apps
+pnpm test             # unit tests for both apps
+pnpm validate:harness # task records, local links, and confirmed architecture rules
+pnpm verify:subpath   # smoke test a running server (see below)
 ```
 
-It checks that completed task records contain the required sections and state
-fields, and that local Markdown links resolve. Requires Node.js (developed
-against Node 24); no third-party dependencies.
+The API reads `DATABASE_URL` and `PORT` from the environment. Copy
+`apps/api/.env.example` to `apps/api/.env` and adjust; `.env` is git-ignored.
 
-CI runs the same command on GitHub. A passing local run is **not** evidence of a
-successful CI run; check the GitHub Actions tab for the recorded result.
+### Subpath smoke test
+
+With the built application running, verify subpath routing:
+
+```
+pnpm verify:subpath                       # expects http://127.0.0.1:3012
+EXPECT_DB=down node scripts/smoke-subpath.mjs http://127.0.0.1:3012
+```
+
+It checks the pages, static and public assets, the canonical `/seo-stat` ->
+`/seo-stat/` redirect, that root `/api/` and `/_next/` are rejected, and that
+`/seo-stat/api/health` works through the same-origin proxy.
+
+## Deployment
+
+Every successful push to `main` produces a deployment artifact in GitHub
+Actions. A systemd user timer on the server polls for the latest successful
+`main` build and deploys it under `/srv/seo-stat/`, with health checks and
+application rollback. See `docs/deployment.md` for the model, one-time
+administrator prerequisites, migrations, backup/restore, and rollback.
+
+CI validates and packages only; it does not deploy and does not touch the server.
+A passing local run is not evidence of a successful CI run; check the GitHub
+Actions tab.
 
 ## Next steps
 
-- Review the open decisions in `docs/architecture.md` and `docs/deployment.md`.
-- Confirm the server details recorded as unknown in `docs/deployment.md`.
-- Start the first implementation task listed in `tasks/INDEX.md`.
+- Build persistent schedules, safe job claiming, execution history, and a
+  simulated action.
+- Confirm the open decisions in `docs/architecture.md`.
+- External publishing and AI generation remain later integrations.
