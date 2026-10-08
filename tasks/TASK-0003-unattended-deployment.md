@@ -1,7 +1,7 @@
 # TASK-0003: Unattended deployment
 
 - ID: TASK-0003
-- State: in-progress
+- State: completed
 - Owner: agent
 - Created: 2026-10-08
 - Last updated: 2026-10-08
@@ -53,8 +53,8 @@ Out of scope:
   documented restore; never `migrate dev`/`db push` in production.
 - [x] Administrator bootstrap prepared for PostgreSQL role/database, nginx/TLS
   integration, and missing tools; no broad passwordless sudo.
-- [ ] First deployment completed and the target URL verified (blocked: see
-  Completion notes).
+- [x] First deployment completed and the target URL verified (see Verification
+  evidence).
 
 ## Verification evidence
 
@@ -90,23 +90,35 @@ Out of scope:
 - Server deploy scripts were synced from the committed revision `2fe962d`;
   `/srv/seo-stat/scripts/bootstrap-admin.sh` matches it (sha256) and all scripts
   pass `bash -n`.
-- Not yet verified: the first end-to-end deployment. Blocked on the
-  administrator bootstrap (PostgreSQL role/database and nginx include).
+- Administrator bootstrap ran successfully (PostgreSQL role/database created,
+  `api.env` written, nginx include added, `nginx -t` passed, linger enabled).
+- First deployment completed through the implemented mechanism. For the verified
+  release, the CI run SHA (`d82d102…`), artifact name
+  (`seo-stat-deploy-d82d1027d9a687ba0999b6b20da9b3ae44686338`), embedded
+  `RELEASE_SHA`, and deployed `current` all agree.
+- Verified after deployment: API listening on `127.0.0.1:3011` and web on
+  `127.0.0.1:3012`; `/seo-stat/api/health` returns 200 with
+  `{"database":"up"}`; the app-origin subpath smoke passes all checks; through
+  nginx `https://192.168.8.50/seo-stat/`, `/schedules/`, `/runs/`, `/robots.txt`,
+  a `_next` static asset, and `/seo-stat/api/health` return 200; `/seo-stat`
+  redirects (301) to `/seo-stat/`; unrelated apps still return 200 (`/` landing
+  and `/sdr/`).
+- `deploy-state.json` records the deployed SHA, timestamps, outcome, and health
+  result. A repeated poll logged `already deployed … nothing to do` and left the
+  state unchanged, confirming idempotency. The deploy timer remains enabled.
 
 ## Completion notes
 
-- One-time administrator prerequisite remaining (the GitHub token is done):
-  run on the server as an administrator:
-  `sudo bash /srv/seo-stat/scripts/bootstrap-admin.sh`
-  It creates the `seostat` PostgreSQL role and `seo_stat` database and writes
-  `/srv/seo-stat/config/api.env` (mode 0600, seostat-owned), installs
-  `/etc/nginx/snippets/seo-stat.locations.conf` and adds its `include` to the
-  `192.168.8.50` server block with an `nginx -t` reload, installs `unzip` if
-  missing, ensures the `/srv/seo-stat` directories, and enables lingering.
-- The systemd user units are already installed and enabled, and the deploy timer
-  is active, so once the administrator step completes, the timer deploys the
-  latest successful `main` artifact automatically within a few minutes, with no
-  recurring operator approval.
+- The one-time administrator bootstrap (`bootstrap-admin.sh`) has been run and
+  the GitHub token is in place. The systemd user units are installed and
+  enabled, so each new successful `main` build is deployed automatically: a push
+  produces an artifact and the timer advances `current` to it within a few
+  minutes, with no recurring operator approval.
+- Defects found and fixed while completing the first deployment: the poller's
+  JSON helper used `$2` instead of `$1`; `deploy.sh` now loads `api.env` so
+  Prisma has `DATABASE_URL`; `backup-db.sh` strips Prisma's `?schema=`
+  parameter; `bootstrap-admin.sh` treats the shipped placeholder password as
+  unset.
 - Rollback restores the previous application release only; it does not reverse
   database migrations.
 - Recommended next task: persistent schedules, safe job claiming, execution
@@ -115,6 +127,7 @@ Out of scope:
 ## State
 
 - Implementation: complete (committed)
-- Verification: partial (server mechanisms and CI verified; first deployment blocked)
-- Commit: committed on `main` (`4550e36` and earlier)
-- Deployment: not deployed (blocked on administrator bootstrap and GitHub token)
+- Verification: complete (services, health, and HTTPS URL verified)
+- Commit: committed on `main`
+- Deployment: deployed (first release verified; the timer advances `current` to
+  each new successful `main` build)

@@ -8,7 +8,9 @@ website publishing, LinkedIn publishing, and Google performance reporting.
 Application foundation plus an unattended deployment pipeline. There is a
 TypeScript ESM pnpm workspace with a Next.js UI shell and a NestJS API, and CI
 produces a deployment artifact consumed by a server-side systemd user timer.
-**No scheduling, generation, publishing, or reporting** exists yet.
+The foundation is deployed at https://192.168.8.50/seo-stat/ and updates
+automatically from successful `main` builds. **No scheduling, generation,
+publishing, or reporting** exists yet.
 
 - Public UI URL: https://192.168.8.50/seo-stat/
 - API prefix: `/seo-stat/api/` (same origin)

@@ -126,10 +126,10 @@ and an API end-to-end test against a PostgreSQL service). On `main` pushes it
 additionally packages and uploads the deployment artifact.
 
 CI validates and packages only; it does not deploy and does not touch the server.
-Status at the time of writing: the `main` workflow passes and produces the
-SHA-tied artifact (verified run 37765600853 on commit `4550e36`); the first
-server-side deployment is pending the administrator bootstrap and the download
-token.
+The server-side timer performs the deployment. Status: the first deployment
+completed and was verified at https://192.168.8.50/seo-stat/ (API/DB health and
+the HTTPS UI), and the timer advances `current` to each new successful `main`
+build automatically.
 
 ## Unknown / to confirm
 
