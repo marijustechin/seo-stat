@@ -1,0 +1,14 @@
+# Secrets and local configuration - must never be tracked
+.env
+.env.*
+*.local
+secrets/
+config/local.*
+
+# Persistent/runtime data
+data/
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
