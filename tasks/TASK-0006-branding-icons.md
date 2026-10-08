@@ -55,6 +55,11 @@ Out of scope: service workers and any additional PWA functionality.
 - Local assets under `/seo-stat/branding/` returned 200 with correct content
   types (`application/manifest+json`, `image/png`), and the manifest body
   returned the corrected JSON.
+- Live through nginx at https://192.168.8.50/seo-stat/ after automatic
+  deployment (SHA `1d52b1b`, CI run succeeded): the head emits exactly the four
+  branding links under `/seo-stat/branding/`; all six referenced assets return
+  200 with correct content types; the manifest body resolves under `/seo-stat/`;
+  unrelated apps (`/` landing and `/sdr/`) still return 200.
 
 ## Completion notes
 
@@ -66,6 +71,7 @@ Out of scope: service workers and any additional PWA functionality.
 ## State
 
 - Implementation: complete
-- Verification: complete (local); live verification pending deployment
+- Verification: complete (local and live)
 - Commit: committed on `main`
-- Deployment: deployed automatically by the systemd user timer
+- Deployment: deployed automatically by the systemd user timer (verified at
+  `1d52b1b`; the timer keeps `current` at the latest successful `main` commit)
