@@ -80,6 +80,21 @@ schedules, Google metrics, and a general workflow builder.
 - **Live AI execution was NOT exercised**: no `OPENAI_API_KEY` is present on the
   server (`config/api.env` has DATABASE_URL/PORT/NODE_ENV only). The live
   **TexTrade UK** project exists and was left unmodified.
+- CI: run 37778966167 on commit `3b23046` succeeded and produced the SHA-tied
+  deployment artifact.
+- Deployed automatically to `3b23046213229d2212b005d8ca731c092fb1eab3` (state
+  outcome `success`). The deploy log shows the pre-migration backup
+  (`backing up database before migrations`) then `prisma migrate deploy`
+  applying `20261008123232_analysis_runs_and_competitors`; a third backup
+  `seo_stat-20261008T124650Z.sql.gz` was written and the `analysis_runs` table
+  exists.
+- Live after deploy: services on `127.0.0.1:3011`/`3012`; `/seo-stat/api/health`
+  200; `/seo-stat/api/system/status` returns provider `openai`, model
+  `gpt-6.1-sol`, `configured:false`, with the documented limits; nginx serves
+  `/seo-stat/`, `/system/`, `/projects/new/`, and the status endpoint (200); the
+  app-origin subpath smoke passes; unrelated apps (`/` landing and `/sdr/`) still
+  200. The live project list contains `TexTrade UK` with no competitor URLs and
+  was not modified.
 
 ## Completion notes
 
@@ -96,7 +111,8 @@ schedules, Google metrics, and a general workflow builder.
 ## State
 
 - Implementation: complete
-- Verification: complete for mocked/structural checks; live AI execution pending
-  provider configuration (not verified)
+- Verification: complete for mocked/structural checks and the live deployment;
+  live AI execution pending provider configuration (not verified)
 - Commit: committed on `main`
-- Deployment: deployed automatically by the systemd user timer
+- Deployment: deployed automatically by the systemd user timer (verified at
+  `3b23046`)
