@@ -220,6 +220,44 @@ schedules, Google metrics, and a general workflow builder.
   When a Firecrawl key is configured, Firecrawl is preferred; the System page
   shows the DeepSeek and Firecrawl states separately.
 
+## Follow-up — make generated suggestions reliably applicable
+
+- Cause: the stored TexTrade UK analysis tone value was **381 characters**, but
+  the analysis output schema allowed tone up to 2000 while the apply DTO and the
+  project field cap tone at 120 (`toneValue must be shorter than or equal to 120
+  characters`).
+- Alignment: the output schema now caps `tone.value` at 120 (generation/output
+  validation), and the prompt requires a concise tone with longer explanation in
+  `tone.rationale`. The apply DTO and project field limits are unchanged; no
+  database limits were raised and text is not silently truncated. Existing
+  overlong suggestions remain editable because stored results are not
+  re-validated on load.
+- Frontend: each editable field shows a character counter and limit; tone states
+  the concise-instruction rule. Apply is disabled when nothing is selected or any
+  selected value is invalid; an invalid field can be deselected to apply the
+  others. A "Will save:" summary lists the selected fields, and the button reads
+  "Save selected suggestions to project settings." Unselected fields and the
+  publishing policy are preserved. Missing-information questions stay as research
+  guidance and are not removed by saving.
+- Settings sync: on success the applied values are merged into the Settings form
+  (only the applied fields), so the form reflects persisted values, unsaved edits
+  to other fields are preserved, and a later "Save changes" cannot overwrite
+  applied values with stale state. Conflict handling is retained.
+- Verification (automated): a new API e2e test seeds a completed run with a
+  200-character tone and asserts the overlong apply returns 400, that applying
+  business context and objectives returns 201 while tone and publishing policy
+  stay unchanged, that a short tone then applies, and that `missingInformation`
+  is retained. Web unit tests cover `validateSuggestionValues` (overlong tone
+  flagged when selected, ignored when deselected, empty selected field flagged).
+- Verification (live, HTTPS request path on the deployed release): reproduced the
+  overlong-tone apply → `400`; applied business context and objectives → `201`;
+  reloaded and confirmed persistence (`businessContext`/`objectives` updated,
+  `tone` unchanged, `audience` unchanged, `publishingPolicy` `review`); confirmed
+  `missingInformation` retained and `appliedFields` recorded; applied a short
+  tone → `201`. The isolated verification project was deleted and the live
+  **TexTrade UK** project was left unmodified. No paid analysis was rerun for
+  this verification.
+
 ## State
 
 - Implementation: complete
