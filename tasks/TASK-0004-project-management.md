@@ -68,6 +68,21 @@ Out of scope:
   verified (2 rows, correct names, `automatic` policy, `friendly` tone).
 - Committed migration `20261008113954_init_projects` creates the `projects`
   table.
+- CI: run 37772587561 on commit `6fd81a1` succeeded and produced the SHA-tied
+  deployment artifact.
+- Deployed automatically by the timer to `6fd81a15710e3b537c51dbb3752e2d7516b3fefb`
+  (state outcome `success`). The deploy log shows the pre-migration backup
+  (`backing up database before migrations`) followed by
+  `applying prisma migrate deploy` applying `20261008113954_init_projects`.
+  Backup file `/srv/seo-stat/backups/seo_stat-20261008T115051Z.sql.gz` passed
+  gzip integrity (`gzip_ok`).
+- Live after deploy: API on `127.0.0.1:3011`, web on `127.0.0.1:3012`;
+  `/seo-stat/api/health` returns 200 with the database up; through nginx
+  `https://192.168.8.50/seo-stat/`, `/system/`, `/projects/new/`, and
+  `/seo-stat/api/health` return 200; unrelated apps (`/` landing and `/sdr/`)
+  still return 200. Live CRUD through the public URL: create 201, get 200 with
+  defaults, settings update 200, archive 201, restore 201, list 200; the test
+  project was removed afterwards (`projects_count=0`).
 
 ## Completion notes
 
@@ -81,6 +96,7 @@ Out of scope:
 ## State
 
 - Implementation: complete
-- Verification: complete (local)
+- Verification: complete (local and live)
 - Commit: committed on `main`
-- Deployment: deployed automatically by the systemd user timer
+- Deployment: deployed automatically by the systemd user timer (verified at
+  `6fd81a1`; the timer keeps `current` at the latest successful `main` commit)
