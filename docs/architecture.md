@@ -3,6 +3,10 @@
 This document distinguishes confirmed decisions and implemented components from
 proposals. The authoritative list of fixed decisions is in `AGENTS.md`.
 
+The approved functional (project-first) architecture is described in
+`docs/functional-architecture.md`. This document covers the technical
+architecture.
+
 ## Confirmed stack
 
 - TypeScript on Node.js 24; pnpm workspace (`apps/web`, `apps/api`).
@@ -17,20 +21,25 @@ proposals. The authoritative list of fixed decisions is in `AGENTS.md`.
 
 ## Implemented components
 
-- `apps/web` - Next.js App Router UI shell.
-  - `src/app` - thin route files (Overview, Schedules, Run history).
-  - `src/widgets` - composed UI (navigation).
-  - `src/features` - user-facing capabilities (health status card).
-  - `src/entities` - domain models and data access (health).
-  - `src/shared` - cross-cutting configuration (base path, API URL, nav).
+- `apps/web` - Next.js App Router UI.
+  - `src/app` - thin route files (project list, project workspace sections,
+    system page) plus the project workspace layout.
+  - `src/widgets` - composed UI (global nav, project header/nav/context).
+  - `src/features` - user-facing capabilities (project list, create, overview,
+    settings, health status).
+  - `src/entities` - domain models and data access (project, health).
+  - `src/shared` - cross-cutting code (config, API client, small UI).
   - Imports flow downward: app -> widgets -> features -> entities -> shared.
 - `apps/api` - NestJS on Fastify.
-  - `src/modules/health` - domain module (controller, service, public `index.ts`).
+  - `src/modules/projects` - the projects domain module (controller, service,
+    DTOs, mapper, public `index.ts`).
+  - `src/modules/health` - health domain module.
   - `src/database` - Prisma infrastructure (`DatabaseModule`, `PrismaService`).
   - `src/config` - configuration infrastructure (`AppConfigModule`).
+  - `src/bootstrap` - shared app configuration (`configureApp`).
   - `src/generated/prisma` - Prisma 7 client output (git-ignored, regenerated).
-- `apps/api/prisma/schema.prisma` - no domain tables yet; `prisma.config.ts`
-  holds the connection URL.
+- `apps/api/prisma/schema.prisma` + `prisma/migrations` - the `projects` table
+  with a committed migration; `prisma.config.ts` holds the connection URL.
 - `deploy/` - deployment artifacts: systemd user units, deploy/poll/backup
   scripts, an nginx location include, and the administrator bootstrap script.
 - `scripts/validate-harness.mjs` - harness validation (tasks, links, and the
@@ -41,11 +50,10 @@ No scheduling, job execution, generation, publishing, or reporting exists yet.
 
 ## Proposed components (not implemented)
 
-- Scheduler - triggers research, generation, publishing, and reporting runs,
-  handling timezone, downtime, and missed runs.
-- Job store - durable record of items and external action results, to make
-  publishing idempotent and recoverable.
-- Research, generation, website publisher, LinkedIn publisher, reporting modules.
+- Workflow definitions, schedules, and execution history (project-scoped).
+- Content research and generation, website and LinkedIn publishing, reporting.
+- Integrations and credential storage.
+- Aggregate costs across projects.
 
 ## Deployment architecture (see `docs/deployment.md`)
 
@@ -62,6 +70,8 @@ No scheduling, job execution, generation, publishing, or reporting exists yet.
 - Frameworks: Next.js 16 (App Router) and NestJS 12 on Fastify.
 - Data: PostgreSQL via Prisma 7 with the PostgreSQL driver adapter.
 - Subpath: UI at `/seo-stat`, API under `/seo-stat/api`; ports 3011/3012.
+- Functional model: project-first scope and ownership (see
+  `docs/functional-architecture.md`).
 - Backend module layout and frontend layer boundaries (see above).
 - Deployment: GitHub artifact + systemd user timer; see `docs/deployment.md`.
 

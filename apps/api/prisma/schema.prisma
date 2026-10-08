@@ -1,7 +1,5 @@
 // seo-stat Prisma schema (Prisma 7).
 //
-// No domain tables are defined yet: this task only establishes connectivity.
-// The health check uses a raw `SELECT 1`, so no models are required.
 // The connection URL is configured in prisma.config.ts (not in this file).
 
 generator client {
@@ -11,4 +9,29 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+/// A project represents a specific business or brand. It owns its settings,
+/// content, workflows, schedules, execution history, integrations, metrics, and
+/// reports. Identity is the generated `id`, which is stable across name or
+/// website changes.
+model Project {
+  id               String    @id @default(uuid())
+  name             String
+  description      String?
+  websiteUrl       String?   @map("website_url")
+  businessContext  String?   @map("business_context")
+  audience         String?
+  objectives       String?
+  contentLanguage  String    @default("en") @map("content_language")
+  tone             String?
+  timezone         String    @default("Europe/Vilnius")
+  publishingPolicy String    @default("review") @map("publishing_policy")
+  status           String    @default("active")
+  archivedAt       DateTime? @map("archived_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("projects")
 }

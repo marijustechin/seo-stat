@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module.js';
+import { configureApp } from './bootstrap/configure-app.js';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -11,7 +12,7 @@ async function bootstrap(): Promise<void> {
     new FastifyAdapter({ routerOptions: { ignoreTrailingSlash: true } }),
   );
 
-  app.setGlobalPrefix('seo-stat/api');
+  configureApp(app);
   app.enableShutdownHooks();
 
   const port = Number(process.env.PORT ?? 3011);

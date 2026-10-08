@@ -5,12 +5,13 @@ website publishing, LinkedIn publishing, and Google performance reporting.
 
 ## Current state
 
-Application foundation plus an unattended deployment pipeline. There is a
-TypeScript ESM pnpm workspace with a Next.js UI shell and a NestJS API, and CI
-produces a deployment artifact consumed by a server-side systemd user timer.
-The foundation is deployed at https://192.168.8.50/seo-stat/ and updates
-automatically from successful `main` builds. **No scheduling, generation,
-publishing, or reporting** exists yet.
+A project-first application plus an unattended deployment pipeline. There is a
+TypeScript ESM pnpm workspace with a Next.js UI and a NestJS API; projects are
+persisted in PostgreSQL. CI produces a deployment artifact consumed by a
+server-side systemd user timer, so the app at
+https://192.168.8.50/seo-stat/ updates automatically from successful `main`
+builds. **No scheduling, generation, publishing, reporting, integrations, or
+aggregate costs** exist yet.
 
 - Public UI URL: https://192.168.8.50/seo-stat/
 - API prefix: `/seo-stat/api/` (same origin)
@@ -25,6 +26,7 @@ AGENTS.md            Working rules and authoritative architecture decisions
 README.md            This file
 apps/web             Next.js UI (src: app, widgets, features, entities, shared)
 apps/api             NestJS API (src: modules, database, config) + Prisma
+                     migrations (projects table)
 deploy/              systemd user units, deploy scripts, nginx include, bootstrap
 docs/                product, architecture, deployment notes
 tasks/               task lifecycle, template, records, index
@@ -79,7 +81,7 @@ Actions tab.
 
 ## Next steps
 
-- Build persistent schedules, safe job claiming, execution history, and a
-  simulated action.
+- Build project-scoped content, workflow definitions, schedules, and execution
+  history (see `docs/functional-architecture.md`).
 - Confirm the open decisions in `docs/architecture.md`.
-- External publishing and AI generation remain later integrations.
+- Credentials, external publishing, and AI generation remain later integrations.

@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { SiteNav } from '@/widgets/site-nav/site-nav';
+import { GlobalNav } from '@/widgets/global-nav/global-nav';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'seo-stat',
-  description: 'SEO content scheduling and reporting (foundation).',
+  description: 'Project-first SEO content workspace.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -14,10 +14,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <header className="site-header">
           <span className="brand">seo-stat</span>
-          <SiteNav />
+          <GlobalNav />
         </header>
         <main className="container">{children}</main>
-        <footer className="site-footer">Scheduling is not implemented yet.</footer>
+        <footer className="site-footer">
+          Scheduling and content generation are not implemented yet.
+        </footer>
       </body>
     </html>
   );

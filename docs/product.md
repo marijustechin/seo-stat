@@ -11,6 +11,14 @@ pipeline:
 4. LinkedIn publishing - publish approved posts to LinkedIn.
 5. Google performance reporting - collect and report Google search performance.
 
+## Project-first model (approved)
+
+The application is organized around projects. A project represents a specific
+business or brand and owns its settings, content, workflows, schedules,
+execution history, integrations, metrics, and reports. Global scope covers
+project management, system settings, and aggregate costs. See
+`docs/functional-architecture.md` for the authoritative description.
+
 ## Confirmed decisions
 
 - Language/runtime: TypeScript on Node.js 24.
@@ -24,11 +32,16 @@ pipeline:
 ## Implemented today
 
 - pnpm workspace with `apps/web` (Next.js) and `apps/api` (NestJS on Fastify).
-- Minimal responsive UI shell: Overview, Schedules, and Run history pages.
+- Project persistence and CRUD: create, list, retrieve, update; archive and
+  restore; persistent settings.
+- Project list as the entry screen, with archived filtering.
+- Project workspace with sections Overview, Content, Automation, Run history,
+  Metrics & reports, and Settings; Overview and Settings are functional.
 - Database-backed API health endpoint at `/seo-stat/api/health`.
-- Subpath routing for the UI and API, a development proxy, and an nginx example.
+- Subpath routing, a development proxy, and automatic deployment.
 
-Scheduling, generation, publishing, and reporting are **not** implemented.
+Scheduling, generation, publishing, reporting, integrations, and aggregate costs
+are **not** implemented. Only Overview and Settings contain real functionality.
 
 ## Intended workflows (proposed)
 
@@ -43,18 +56,18 @@ Scheduling, generation, publishing, and reporting are **not** implemented.
 
 In scope:
 
+- Project management and per-project settings.
 - Content research and article generation producing reviewable drafts.
 - A configurable publishing mode (`review` or `automatic`), defaulting to review.
 - Durable records of generated items and their publication state.
 - A simple performance report.
-- Extending the existing UI shell with real data.
 
 Out of scope:
 
 - Multi-user accounts, roles, and permissions.
-- Multiple websites or multiple social accounts.
 - Analytics beyond Google performance.
-- Advanced UI or design work beyond a functional shell.
+- Advanced UI or design work beyond the approved existing design.
+- Credential storage and external integrations (until a later task).
 
 ## Open product decisions
 

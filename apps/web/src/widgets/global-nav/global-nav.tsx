@@ -2,19 +2,19 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { NAV_ITEMS, isActivePath } from '@/shared/config/app';
+import { GLOBAL_NAV_ITEMS, isGlobalNavActive } from '@/shared/config/app';
 
-export function SiteNav() {
+export function GlobalNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="nav" aria-label="Primary">
+    <nav className="nav" aria-label="Global">
       <ul>
-        {NAV_ITEMS.map((item) => (
+        {GLOBAL_NAV_ITEMS.map((item) => (
           <li key={item.href}>
             <Link
               href={item.href}
-              aria-current={isActivePath(pathname, item.href) ? 'page' : undefined}
+              aria-current={isGlobalNavActive(pathname, item.href) ? 'page' : undefined}
             >
               {item.label}
             </Link>

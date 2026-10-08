@@ -44,9 +44,9 @@ async function expectStatus(name, path, statuses, init) {
 async function main() {
   console.log(`Subpath smoke test against ${base} (EXPECT_DB=${expectDb})`);
 
-  await expectStatus('overview page', '/seo-stat/', [200]);
-  await expectStatus('schedules page', '/seo-stat/schedules/', [200]);
-  await expectStatus('run history page', '/seo-stat/runs/', [200]);
+  await expectStatus('projects page', '/seo-stat/', [200]);
+  await expectStatus('new project page', '/seo-stat/projects/new', [200]);
+  await expectStatus('system page', '/seo-stat/system', [200]);
   await expectStatus('public asset', '/seo-stat/robots.txt', [200]);
 
   // Canonical redirect from /seo-stat to /seo-stat/.
