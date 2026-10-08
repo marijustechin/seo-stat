@@ -64,6 +64,8 @@ jobs:
         run: pnpm -r build
       - name: Test
         run: pnpm -r test
+      - name: Apply database migrations
+        run: pnpm --filter @seo-stat/api exec prisma migrate deploy
       - name: API end-to-end test (with PostgreSQL)
         run: pnpm --filter @seo-stat/api test:e2e
       - name: Package deployment artifact
