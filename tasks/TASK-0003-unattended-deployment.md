@@ -71,6 +71,10 @@ Out of scope:
   `systemctl --user start seo-stat-deploy.service` completed with `Result=success`
   and logged `no readable token ... skipping`, confirming serialization and clean
   handling of a missing credential.
+- CI verified: GitHub Actions run 37765600853 on commit `4550e36` completed
+  successfully and produced the artifact `seo-stat-deploy-4550e3677ec1440e6dddf7de7a69a3e78160c694`
+  (1.63 MB). A first run (37764253751) failed in the packaging step; the archive
+  is now written outside the tree with `--warning=no-file-changed`.
 - Not yet verified: an actual GitHub Actions artifact download on the server, and
   the first end-to-end deployment. Blocked on the administrator bootstrap
   (PostgreSQL role/database and nginx include) and a GitHub download token.
@@ -94,7 +98,7 @@ Out of scope:
 
 ## State
 
-- Implementation: complete (code committed; see Commit below)
-- Verification: partial (server mechanisms implemented; first deployment blocked)
-- Commit: see Git history for this record
+- Implementation: complete (committed)
+- Verification: partial (server mechanisms and CI verified; first deployment blocked)
+- Commit: committed on `main` (`4550e36` and earlier)
 - Deployment: not deployed (blocked on administrator bootstrap and GitHub token)
