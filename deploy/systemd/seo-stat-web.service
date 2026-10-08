@@ -1,0 +1,16 @@
+[Unit]
+Description=seo-stat Web (Next.js)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/seo-stat/current/apps/web
+EnvironmentFile=/srv/seo-stat/config/web.env
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/local/bin/node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3012
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

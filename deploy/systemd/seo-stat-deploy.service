@@ -1,0 +1,10 @@
+[Unit]
+Description=Poll for and deploy the latest successful seo-stat main build
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/srv/seo-stat/config/seo-stat.env
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/srv/seo-stat/scripts/poll-and-deploy.sh

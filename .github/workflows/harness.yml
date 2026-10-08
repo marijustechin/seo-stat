@@ -1,4 +1,4 @@
-name: Harness validation
+name: CI
 
 on:
   push:
@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  validate:
-    name: Validate harness
+  harness:
+    name: Harness validation
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -22,3 +22,58 @@ jobs:
           node-version: '24'
       - name: Validate harness
         run: node scripts/validate-harness.mjs
+
+  app:
+    name: Application
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: seostat
+          POSTGRES_PASSWORD: seostat
+          POSTGRES_DB: seo_stat
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U seostat -d seo_stat"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://seostat:seostat@127.0.0.1:5432/seo_stat?schema=public
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.26.0
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm -r typecheck
+      - name: Lint
+        run: pnpm -r lint
+      - name: Build
+        run: pnpm -r build
+      - name: Test
+        run: pnpm -r test
+      - name: API end-to-end test (with PostgreSQL)
+        run: pnpm --filter @seo-stat/api test:e2e
+      - name: Package deployment artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: bash deploy/scripts/package-release.sh
+      - name: Upload deployment artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: seo-stat-deploy-${{ github.sha }}
+          path: seo-stat-deploy-*.tar.gz
+          if-no-files-found: error
+          retention-days: 14

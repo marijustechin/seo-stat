@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodically poll for and deploy seo-stat main builds
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=3min
+Persistent=true
+RandomizedDelaySec=30s
+
+[Install]
+WantedBy=timers.target
