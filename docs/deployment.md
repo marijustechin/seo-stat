@@ -78,20 +78,28 @@ never committed and never printed.
 
 ## Analysis provider (website & competitor analysis)
 
+- The application provider is **DeepSeek**. Its API is OpenAI-compatible
+  (`https://api.deepseek.com`), so the official OpenAI SDK is used only as the
+  HTTP client; no OpenAI credential is required or read.
 - Configured server-side only; never exposed to the browser, API responses, logs,
-  repository, or release artifact. Set `OPENAI_API_KEY` in
+  repository, or release artifact. Set `DEEPSEEK_API_KEY` in
   `/srv/seo-stat/config/api.env` (mode 0600) and restart the API user service:
   `systemctl --user restart seo-stat-api.service`.
-- `OPENAI_MODEL` defaults to `gpt-6.1-sol` (documented as OpenAI's balance of
-  intelligence and cost). `OPENAI_BASE_URL` is optional. Override the model only
-  with a current, documented model id.
-- When `OPENAI_API_KEY` is unset, analysis is unavailable: the API returns 503
+- `DEEPSEEK_MODEL` defaults to `deepseek-flash` (DeepSeek-V4.1-Flash), the
+  current documented model. `DEEPSEEK_BASE_URL` defaults to
+  `https://api.deepseek.com`. Override the model only with a current, documented
+  model id (for example `deepseek-v4-pro`).
+- When `DEEPSEEK_API_KEY` is unset, analysis is unavailable: the API returns 503
   and the System page shows an unavailable state. No analysis is fabricated.
 - Estimated cost is recorded only when a documented price basis is configured:
   `ANALYSIS_COST_INPUT_PER_MTOK` and `ANALYSIS_COST_OUTPUT_PER_MTOK` (USD per 1M
-  tokens). Otherwise the UI shows "cost unavailable" rather than zero. For
-  `gpt-6.1-sol` the documented prices are 2 USD input / 10 USD output per 1M
-  tokens.
+  tokens). Otherwise the UI shows "cost unavailable" rather than zero. Set these
+  from DeepSeek's published pricing (do not assume another provider's prices);
+  DeepSeek publishes cache-miss input and output rates that vary by peak/off-peak
+  hours.
+- Structured output uses DeepSeek's JSON Output
+  (`response_format: { type: 'json_object' }`) and the response is validated
+  against the schema before use.
 - Research limits and SSRF protections are documented in
   `docs/functional-architecture.md` and enforced in code. The credential is set
   by the administrator/operator; the bootstrap script does not create it.

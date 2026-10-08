@@ -28,8 +28,19 @@ const SYSTEM_PROMPT = [
   '- Provide source URLs in `sources` where applicable, with a short note.',
   '- If something is unknown or unsupported, put it in `missingInformation` as a',
   '  targeted question instead of asserting it.',
-  '- Return only JSON that matches the provided schema.',
+  '- Return only a single JSON object, with no surrounding text.',
 ].join('\n');
+
+const JSON_EXAMPLE = JSON.stringify({
+  businessContext: { value: '...', origin: 'website', confidence: 'medium', sources: [{ url: '...', note: '...' }], rationale: '...' },
+  audienceSegments: [
+    { name: '...', needs: '...', offering: '...', desiredAction: '...', contentDirections: ['...'], origin: 'user', confidence: 'high', sources: [] },
+  ],
+  objectives: { value: '...', origin: 'user', confidence: 'high', sources: [], rationale: '...' },
+  tone: { value: '...', origin: 'inference', confidence: 'medium', sources: [], rationale: '...' },
+  contentThemes: [{ theme: '...', rationale: '...', origin: 'inference', sources: [] }],
+  missingInformation: [{ question: '...', why: '...' }],
+});
 
 function formatPages(pages: EvidencePage[]): string {
   if (pages.length === 0) return 'No pages could be read.';
@@ -74,6 +85,8 @@ export function buildAnalysisPrompt(
     '5. List missing information as targeted questions.',
     '',
     `Keep the total response within ${ANALYSIS_LIMITS.maxOutputTokens} tokens.`,
+    'Respond with json only, using exactly this shape:',
+    JSON_EXAMPLE,
   ].join('\n');
 
   return { system: SYSTEM_PROMPT, user };

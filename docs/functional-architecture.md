@@ -86,10 +86,11 @@ website, objectives, and optional competitor URLs.
   with input snapshot, evidence, structured output, sanitized errors, and usage.
   A restart marks stale queued/running runs interrupted and retryable. Analyses
   appear in project Run history.
-- Provider: one provider behind a small interface (OpenAI). Configuration is
-  global and server-side; inputs/results/usage are project-scoped. Model and
-  token usage are recorded per run; estimated cost appears only when a
-  documented price basis is configured, otherwise "cost unavailable".
+- Provider: one provider behind a small interface (DeepSeek). Configuration is
+  global and server-side; inputs/results/usage are project-scoped. The model and
+  token usage are recorded per run; estimated cost appears only when a documented
+  price basis is configured, otherwise "cost unavailable". No OpenAI credential
+  is required.
 - Archived projects cannot start analyses or apply suggestions; history is kept.
 
 ## Review policy semantics

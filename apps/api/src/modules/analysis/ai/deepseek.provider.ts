@@ -7,25 +7,31 @@ import {
 } from './ai-provider.js';
 
 /**
- * Default model. `gpt-6.1-sol` is documented by OpenAI as the balance of
- * intelligence and cost; override with OPENAI_MODEL. See docs/deployment.md for
- * the price basis used to estimate cost.
+ * DeepSeek's API is OpenAI-compatible (documented base URL
+ * `https://api.deepseek.com`), so the official OpenAI SDK is used purely as the
+ * HTTP client. No OpenAI credential is required.
+ *
+ * Default model: `deepseek-flash` (DeepSeek-V4.1-Flash), the current documented
+ * model. Override with DEEPSEEK_MODEL. Structured output uses DeepSeek's JSON
+ * Output mode (`response_format: { type: 'json_object' }`); the response is
+ * validated against the Zod schema before use.
  */
-export const DEFAULT_ANALYSIS_MODEL = 'gpt-6.1-sol';
+export const DEFAULT_ANALYSIS_MODEL = 'deepseek-flash';
+export const DEFAULT_DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
 
 @Injectable()
-export class OpenAiAnalysisProvider extends AnalysisProvider {
-  readonly providerId = 'openai';
+export class DeepSeekAnalysisProvider extends AnalysisProvider {
+  readonly providerId = 'deepseek';
   readonly model: string;
   private readonly client: OpenAI | null;
-  private readonly logger = new Logger(OpenAiAnalysisProvider.name);
+  private readonly logger = new Logger(DeepSeekAnalysisProvider.name);
 
   constructor() {
     super();
-    this.model = process.env.OPENAI_MODEL?.trim() || DEFAULT_ANALYSIS_MODEL;
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
-    const baseURL = process.env.OPENAI_BASE_URL?.trim();
-    this.client = apiKey ? new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) }) : null;
+    this.model = process.env.DEEPSEEK_MODEL?.trim() || DEFAULT_ANALYSIS_MODEL;
+    const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
+    const baseURL = process.env.DEEPSEEK_BASE_URL?.trim() || DEFAULT_DEEPSEEK_BASE_URL;
+    this.client = apiKey ? new OpenAI({ apiKey, baseURL }) : null;
   }
 
   isConfigured(): boolean {
@@ -42,11 +48,8 @@ export class OpenAiAnalysisProvider extends AnalysisProvider {
         { role: 'system', content: request.system },
         { role: 'user', content: request.user },
       ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: { name: request.schemaName, strict: true, schema: request.jsonSchema },
-      },
-      max_completion_tokens: request.maxOutputTokens,
+      response_format: { type: 'json_object' },
+      max_tokens: request.maxOutputTokens,
     });
 
     const choice = completion.choices[0];

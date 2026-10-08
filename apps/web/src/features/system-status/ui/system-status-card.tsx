@@ -44,8 +44,9 @@ export function SystemStatusCard() {
             </p>
           ) : (
             <p className="status-error" role="status">
-              Analysis is not configured. Set OPENAI_API_KEY on the server to enable it. Credentials
-              are server-side only and are never exposed here.
+              Analysis is not configured. An administrator must set the provider credential
+              (DEEPSEEK_API_KEY) on the server to enable it. Credentials are server-side only and
+              are never exposed here.
             </p>
           )}
         </>

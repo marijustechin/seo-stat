@@ -35,7 +35,7 @@ architecture.
     DTOs, mapper, competitor URL normalization, public `index.ts`).
   - `src/modules/analysis` - website/competitor analysis: controller, service,
     an in-process runner, SSRF-safe bounded research (`research/`), and one AI
-    provider behind an interface (`ai/`).
+    provider behind an interface (`ai/`, DeepSeek via the OpenAI-compatible SDK).
   - `src/modules/system` - global system status (analysis configuration).
   - `src/modules/health` - health domain module.
   - `src/database` - Prisma infrastructure (`DatabaseModule`, `PrismaService`).

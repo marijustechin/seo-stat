@@ -77,8 +77,8 @@ schedules, Google metrics, and a general workflow builder.
 - No paid AI calls are made in CI; research and provider are mocked.
 - `typecheck`, `lint`, production builds, harness validation, and subpath smoke
   checks pass; ports 3011/3012 preserved.
-- **Live AI execution was NOT exercised**: no `OPENAI_API_KEY` is present on the
-  server (`config/api.env` has DATABASE_URL/PORT/NODE_ENV only). The live
+- **Live AI execution was NOT exercised**: no provider credential is present on
+  the server (`config/api.env` has DATABASE_URL/PORT/NODE_ENV only). The live
   **TexTrade UK** project exists and was left unmodified.
 - CI: run 37778966167 on commit `3b23046` succeeded and produced the SHA-tied
   deployment artifact.
@@ -89,8 +89,9 @@ schedules, Google metrics, and a general workflow builder.
   `seo_stat-20261008T124650Z.sql.gz` was written and the `analysis_runs` table
   exists.
 - Live after deploy: services on `127.0.0.1:3011`/`3012`; `/seo-stat/api/health`
-  200; `/seo-stat/api/system/status` returns provider `openai`, model
-  `gpt-6.1-sol`, `configured:false`, with the documented limits; nginx serves
+  200; `/seo-stat/api/system/status` returned provider `openai`, model
+  `gpt-6.1-sol`, `configured:false` (provider since replaced by DeepSeek — see
+  the correction below), with the documented limits; nginx serves
   `/seo-stat/`, `/system/`, `/projects/new/`, and the status endpoint (200); the
   app-origin subpath smoke passes; unrelated apps (`/` landing and `/sdr/`) still
   200. The live project list contains `TexTrade UK` with no competitor URLs and
@@ -98,13 +99,15 @@ schedules, Google metrics, and a general workflow builder.
 
 ## Completion notes
 
-- Provider: OpenAI official SDK, default model `gpt-6.1-sol` (documented balance
-  of intelligence and cost); configurable via `OPENAI_MODEL`/`OPENAI_BASE_URL`.
-- Remaining one-time setup to enable live analysis: set `OPENAI_API_KEY` in
+- Provider: **DeepSeek** (see the correction below). The OpenAI SDK is retained
+  only as the HTTP client for DeepSeek's OpenAI-compatible API; no OpenAI
+  credential is required.
+- Remaining one-time setup to enable live analysis: set `DEEPSEEK_API_KEY` in
   `/srv/seo-stat/config/api.env` (mode 0600), optionally set
-  `ANALYSIS_COST_INPUT_PER_MTOK`/`ANALYSIS_COST_OUTPUT_PER_MTOK`, then
-  `systemctl --user restart seo-stat-api.service`. Then run the analysis for
-  TexTrade UK from project Settings (suggestions are not applied automatically).
+  `ANALYSIS_COST_INPUT_PER_MTOK`/`ANALYSIS_COST_OUTPUT_PER_MTOK` from DeepSeek's
+  published pricing, then `systemctl --user restart seo-stat-api.service`. Then
+  run the analysis for TexTrade UK from project Settings (suggestions are not
+  applied automatically).
 - Recommended next task: project-scoped content and workflow/schedule/execution
   management.
 
@@ -137,6 +140,37 @@ schedules, Google metrics, and a general workflow builder.
   (Fastify contract preserved; validation not weakened). `/system/status` reports
   `configured:false`, the Settings page loads (200), and health/unrelated apps
   remain 200. Real AI execution remains pending provider configuration.
+
+## Correction — DeepSeek provider
+
+- Per operator direction the application AI provider is **DeepSeek**; OpenAI is
+  used separately for planning/supervising development and must not be an
+  application requirement.
+- Verified against the current official DeepSeek docs: OpenAI-compatible base URL
+  `https://api.deepseek.com`; current documented models `deepseek-flash`
+  (DeepSeek-V4.1-Flash, default) and `deepseek-v4-pro`; JSON Output via
+  `response_format: { type: 'json_object' }` (DeepSeek does not offer strict
+  json_schema, so the response is validated with the existing Zod schema).
+- Implementation: `DeepSeekAnalysisProvider` (providerId `deepseek`, default
+  model `deepseek-flash`, base URL override) behind the unchanged
+  `AnalysisProvider` interface. The OpenAI SDK is retained only as the
+  OpenAI-compatible HTTP client (compatibility verified against DeepSeek's own
+  quick-start); no OpenAI credential is read. Research limits, structured-output
+  validation, persistent runs, review/apply behaviour, and project-specific
+  usage attribution are unchanged.
+- Configuration: `DEEPSEEK_API_KEY` (required to enable), `DEEPSEEK_MODEL`,
+  `DEEPSEEK_BASE_URL`; the OpenAI env vars and default are removed. System status
+  now reports provider `deepseek`, and the unavailable state references the
+  DeepSeek credential.
+- Cost: no default price basis; estimated cost stays "cost unavailable" unless
+  `ANALYSIS_COST_INPUT_PER_MTOK`/`ANALYSIS_COST_OUTPUT_PER_MTOK` are set from
+  DeepSeek's published pricing. OpenAI pricing is not assumed.
+- Verification: `deepseek.provider.spec.ts` added (unconfigured without the key,
+  configured with it, default model `deepseek-flash`); typecheck, lint, unit
+  tests, API e2e, build, harness, and subpath smoke pass; deployed automatically.
+- Live AI: still pending — no `DEEPSEEK_API_KEY` is configured on the server.
+  Once set, run TexTrade UK's analysis from Settings without applying
+  suggestions, and record the observed run.
 
 ## State
 

@@ -81,7 +81,7 @@ Actions tab.
 
 ## Next steps
 
-- Configure the analysis provider (`OPENAI_API_KEY`) to enable website and
+- Configure the analysis provider (`DEEPSEEK_API_KEY`) to enable website and
   competitor analysis (see `docs/deployment.md`).
 - Build project-scoped content, workflow definitions, schedules, and execution
   history (see `docs/functional-architecture.md`).
