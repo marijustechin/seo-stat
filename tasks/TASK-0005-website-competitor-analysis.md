@@ -173,10 +173,19 @@ schedules, Google metrics, and a general workflow builder.
   `deepseek-flash`, `configured:false`; a bodyless analysis POST returns `503
   {"message":"Analysis is not configured on the server."}` (not the parser
   error); Settings, health, and unrelated pages return 200.
-- Live AI execution remains pending: no `DEEPSEEK_API_KEY` is configured on the
-  server (`config/api.env` has DATABASE_URL/PORT/NODE_ENV only). Once set, run
-  TexTrade UK's analysis from Settings without applying suggestions, and record
-  the observed run.
+- DeepSeek credential configured on the server from a **direct DeepSeek API**
+  credential (verified: `GET https://api.deepseek.com/models` → HTTP 200 listing
+  `deepseek-flash`). A **real TexTrade UK analysis completed** (run
+  `e1e07720-d975-4b1f-a71e-15e259674f80`): provider `deepseek`, model
+  `deepseek-flash`, 5015 input / 3117 output tokens, estimated cost
+  "unavailable" (no price basis configured), research backend `direct`, 5 pages
+  read, 0 failures, 5 audience segments and 8 missing-information items.
+  Suggestions were **not** applied.
+- Two earlier live attempts failed and were fixed: response JSON truncated
+  (thinking mode on with a 2 500-token budget) — fixed by disabling thinking and
+  raising the output limit to 8 000; then an over-long `missingInformation` array
+  was rejected by validation — fixed by clamping over-long arrays before
+  validation.
 
 ## Supplement — optional Firecrawl research integration
 
@@ -206,12 +215,16 @@ schedules, Google metrics, and a general workflow builder.
 - Verification: unit tests cover Firecrawl configuration and backend selection
   (Firecrawl preferred when configured, direct otherwise); typecheck, lint, unit
   tests, API e2e, build, harness, and subpath smoke pass.
+- Live: `FIRECRAWL_API_KEY` is not configured, so the real TexTrade UK run used
+  the `direct` backend (recorded in the run evidence with `firecrawlCredits:null`).
+  When a Firecrawl key is configured, Firecrawl is preferred; the System page
+  shows the DeepSeek and Firecrawl states separately.
 
 ## State
 
 - Implementation: complete
-- Verification: complete for mocked/structural checks and the live deployment;
-  live AI execution pending provider configuration (not verified)
+- Verification: complete, including a real DeepSeek analysis run (suggestions
+  unapplied); Firecrawl live research pending a Firecrawl credential
 - Commit: committed on `main`
 - Deployment: deployed automatically by the systemd user timer (verified at
-  `3b23046`)
+  `7df8205`)
