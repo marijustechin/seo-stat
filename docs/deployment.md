@@ -76,6 +76,26 @@ never committed and never printed.
   (strip Prisma's `?schema=` parameter, which `psql` does not accept). Restore
   into a maintenance window; it overwrites current data.
 
+## Analysis provider (website & competitor analysis)
+
+- Configured server-side only; never exposed to the browser, API responses, logs,
+  repository, or release artifact. Set `OPENAI_API_KEY` in
+  `/srv/seo-stat/config/api.env` (mode 0600) and restart the API user service:
+  `systemctl --user restart seo-stat-api.service`.
+- `OPENAI_MODEL` defaults to `gpt-6.1-sol` (documented as OpenAI's balance of
+  intelligence and cost). `OPENAI_BASE_URL` is optional. Override the model only
+  with a current, documented model id.
+- When `OPENAI_API_KEY` is unset, analysis is unavailable: the API returns 503
+  and the System page shows an unavailable state. No analysis is fabricated.
+- Estimated cost is recorded only when a documented price basis is configured:
+  `ANALYSIS_COST_INPUT_PER_MTOK` and `ANALYSIS_COST_OUTPUT_PER_MTOK` (USD per 1M
+  tokens). Otherwise the UI shows "cost unavailable" rather than zero. For
+  `gpt-6.1-sol` the documented prices are 2 USD input / 10 USD output per 1M
+  tokens.
+- Research limits and SSRF protections are documented in
+  `docs/functional-architecture.md` and enforced in code. The credential is set
+  by the administrator/operator; the bootstrap script does not create it.
+
 ## Rollback semantics
 
 - On a failed post-deploy health check, `deploy.sh` restores the previous

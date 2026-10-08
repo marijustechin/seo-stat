@@ -1,4 +1,5 @@
 import { HealthCard } from '@/features/health-status/ui/health-card';
+import { SystemStatusCard } from '@/features/system-status/ui/system-status-card';
 import { NotImplemented } from '@/shared/ui/not-implemented';
 
 export default function SystemPage() {
@@ -9,13 +10,14 @@ export default function SystemPage() {
         Global scope: project management, system settings, and aggregate costs.
       </p>
       <HealthCard />
+      <SystemStatusCard />
       <NotImplemented
         title="System settings"
         description="Global system settings are not implemented yet."
       />
       <NotImplemented
         title="Aggregate costs"
-        description="Cost aggregation across projects is not implemented yet. Future shared AI usage will be attributed per project rather than shown as invented totals."
+        description="Cost aggregation across projects is not implemented yet. Analyses report their own usage and estimated cost on each project."
       />
     </>
   );

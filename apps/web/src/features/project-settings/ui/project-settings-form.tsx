@@ -27,6 +27,7 @@ interface SettingsForm {
   tone: string;
   timezone: string;
   publishingPolicy: string;
+  competitorUrls: string[];
 }
 
 export function ProjectSettingsForm() {
@@ -42,6 +43,7 @@ export function ProjectSettingsForm() {
     tone: project.tone ?? '',
     timezone: project.timezone,
     publishingPolicy: project.publishingPolicy,
+    competitorUrls: project.competitorUrls,
   });
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -78,6 +80,7 @@ export function ProjectSettingsForm() {
         tone: clean(form.tone),
         timezone: form.timezone,
         publishingPolicy: form.publishingPolicy as PublishingPolicy,
+        competitorUrls: form.competitorUrls.map((url) => url.trim()).filter((url) => url.length > 0),
       });
       await refresh();
       setSaved(true);
@@ -86,6 +89,30 @@ export function ProjectSettingsForm() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const setCompetitor = (index: number, value: string) => {
+    setForm((current) => ({
+      ...current,
+      competitorUrls: current.competitorUrls.map((url, i) => (i === index ? value : url)),
+    }));
+    setSaved(false);
+  };
+
+  const addCompetitor = () => {
+    setForm((current) =>
+      current.competitorUrls.length >= 5
+        ? current
+        : { ...current, competitorUrls: [...current.competitorUrls, ''] },
+    );
+  };
+
+  const removeCompetitor = (index: number) => {
+    setForm((current) => ({
+      ...current,
+      competitorUrls: current.competitorUrls.filter((_, i) => i !== index),
+    }));
+    setSaved(false);
   };
 
   const archive = async () => {
@@ -244,6 +271,45 @@ export function ProjectSettingsForm() {
       </fieldset>
 
       <fieldset className="fieldset">
+        <legend>Competitors</legend>
+        <p className="muted">
+          Optional competitor websites used by the analysis. Up to five. They are never invented or
+          filled in for you.
+        </p>
+        {form.competitorUrls.map((url, index) => (
+          <div className="field competitor-row" key={index}>
+            <label htmlFor={`settings-competitor-${index}`}>Competitor {index + 1}</label>
+            <div className="competitor-input">
+              <input
+                id={`settings-competitor-${index}`}
+                className="input"
+                type="url"
+                placeholder="https://competitor.example"
+                value={url}
+                onChange={(event) => setCompetitor(index, event.target.value)}
+                maxLength={2048}
+              />
+              <button
+                type="button"
+                className="button cursor-pointer"
+                onClick={() => removeCompetitor(index)}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="button cursor-pointer"
+          onClick={addCompetitor}
+          disabled={form.competitorUrls.length >= 5}
+        >
+          Add competitor
+        </button>
+      </fieldset>
+
+      <fieldset className="fieldset">
         <legend>Publishing policy</legend>
         <div className="field">
           <label htmlFor="settings-policy">Policy</label>
@@ -253,9 +319,14 @@ export function ProjectSettingsForm() {
             value={form.publishingPolicy}
             onChange={update('publishingPolicy')}
           >
-            <option value="review">Review required before any external action</option>
+            <option value="review">Review required before publishing or messaging</option>
             <option value="automatic">Automatic</option>
           </select>
+          <p className="help">
+            This applies to publishing, sending messages, and modifying external systems. Manually
+            requested public website research may run without another approval, and applying the
+            analysis suggestions always requires your explicit action.
+          </p>
         </div>
       </fieldset>
 

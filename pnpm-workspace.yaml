@@ -8,3 +8,6 @@ allowBuilds:
   '@prisma/engines': true
   prisma: true
   unrs-resolver: true
+
+minimumReleaseAgeExclude:
+  - openai@7.30.1

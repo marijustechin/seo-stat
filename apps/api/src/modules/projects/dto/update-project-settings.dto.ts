@@ -1,4 +1,14 @@
-import { IsIn, IsOptional, IsString, Length, MaxLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Length,
+  MaxLength,
+} from 'class-validator';
+import { MAX_COMPETITOR_URLS } from '../competitor-urls.js';
 import { PUBLISHING_POLICIES, type PublishingPolicy } from '../project.types.js';
 
 /** Business context, content rules, and publishing policy. */
@@ -36,4 +46,10 @@ export class UpdateProjectSettingsDto {
   @IsOptional()
   @IsIn(PUBLISHING_POLICIES)
   publishingPolicy?: PublishingPolicy;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_COMPETITOR_URLS)
+  @IsUrl({ require_tld: false, require_protocol: true, protocols: ['http', 'https'] }, { each: true })
+  competitorUrls?: string[];
 }

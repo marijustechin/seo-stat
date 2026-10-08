@@ -13,6 +13,7 @@ export interface ProjectRecord {
   tone: string | null;
   timezone: string;
   publishingPolicy: string;
+  competitorUrls: string[];
   status: string;
   archivedAt: Date | null;
   createdAt: Date;
@@ -32,6 +33,7 @@ export function toProjectView(record: ProjectRecord): ProjectView {
     tone: record.tone,
     timezone: record.timezone,
     publishingPolicy: record.publishingPolicy as PublishingPolicy,
+    competitorUrls: record.competitorUrls,
     status: record.status as ProjectStatus,
     archivedAt: record.archivedAt ? record.archivedAt.toISOString() : null,
     createdAt: record.createdAt.toISOString(),

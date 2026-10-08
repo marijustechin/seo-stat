@@ -32,7 +32,11 @@ architecture.
   - Imports flow downward: app -> widgets -> features -> entities -> shared.
 - `apps/api` - NestJS on Fastify.
   - `src/modules/projects` - the projects domain module (controller, service,
-    DTOs, mapper, public `index.ts`).
+    DTOs, mapper, competitor URL normalization, public `index.ts`).
+  - `src/modules/analysis` - website/competitor analysis: controller, service,
+    an in-process runner, SSRF-safe bounded research (`research/`), and one AI
+    provider behind an interface (`ai/`).
+  - `src/modules/system` - global system status (analysis configuration).
   - `src/modules/health` - health domain module.
   - `src/database` - Prisma infrastructure (`DatabaseModule`, `PrismaService`).
   - `src/config` - configuration infrastructure (`AppConfigModule`).

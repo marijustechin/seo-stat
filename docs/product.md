@@ -37,6 +37,9 @@ project management, system settings, and aggregate costs. See
 - Project list as the entry screen, with archived filtering.
 - Project workspace with sections Overview, Content, Automation, Run history,
   Metrics & reports, and Settings; Overview and Settings are functional.
+- Website & competitor analysis: optional competitor URLs (up to five), a
+  manually triggered bounded public-website research run, and reviewable,
+  evidence-based suggestions that can be selectively applied to settings.
 - Database-backed API health endpoint at `/seo-stat/api/health`.
 - Subpath routing, a development proxy, and automatic deployment.
 

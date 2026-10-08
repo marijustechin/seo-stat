@@ -52,6 +52,54 @@ per-project attributions, never a replacement for them.
 - Overview and Settings are functional. Content, Automation, Run history, and
   Metrics & reports show explicit "not implemented yet" states.
 
+## Website & competitor analysis (implemented, TASK-0005)
+
+A manually triggered, project-scoped analysis helps configure a project from its
+website, objectives, and optional competitor URLs.
+
+- Inputs (snapshotted at start): website URL, competitor URLs, business context,
+  audience, objectives, tone, content language, and the project's `updatedAt`
+  for conflict detection.
+- Research: a bounded selection of relevant public pages (home, about, services,
+  audience, contact) from the project site and each competitor. Concrete limits:
+  up to 6 project pages, 3 per competitor, 15 pages total, 5 competitors, 4
+  redirects, 2 MB per page, 10 s timeout, 1 retry, 8 000 chars/page, 60 000 input
+  chars, 2 500 output tokens.
+- SSRF protection: only http/https on ports 80/443; credentials, localhost and
+  internal hostnames, and private/loopback/link-local/metadata/reserved
+  addresses are rejected at connect time (DNS resolution and every redirect hop).
+  Fetched text is untrusted research material, never instructions.
+- Output: structured suggestions for business context, multiple audience
+  segments (needs, offering, desired action, content directions), a clearer
+  objectives formulation, tone, content themes, and missing-information
+  questions. Each suggestion records provenance (`user`, `website`,
+  `competitor`, `inference`), confidence, rationale, and source links. Competitor
+  observations are kept separate; unsupported claims stay questions/proposals.
+- Review and apply: results are editable suggestions with proposed vs current
+  values. Applying is explicit and selective (business context, audience
+  summary, objectives, tone). Applying never changes the publishing policy. A
+  reanalysis is a new saved result and does not overwrite approved settings.
+  If the project changed since the run started, the conflict is shown and must
+  be acknowledged before applying.
+- Execution: asynchronous in-process runner (not a workflow engine), one active
+  run per project, persisted runs (queued/running/completed/failed/interrupted)
+  with input snapshot, evidence, structured output, sanitized errors, and usage.
+  A restart marks stale queued/running runs interrupted and retryable. Analyses
+  appear in project Run history.
+- Provider: one provider behind a small interface (OpenAI). Configuration is
+  global and server-side; inputs/results/usage are project-scoped. Model and
+  token usage are recorded per run; estimated cost appears only when a
+  documented price basis is configured, otherwise "cost unavailable".
+- Archived projects cannot start analyses or apply suggestions; history is kept.
+
+## Review policy semantics
+
+- Manually requested public website research may execute without another
+  approval.
+- Applying proposed project settings always requires the user's explicit action.
+- Publishing, sending messages, and modifying external systems remain subject to
+  the project's review policy.
+
 ## Planned capabilities (not implemented)
 
 - Content research and generation.

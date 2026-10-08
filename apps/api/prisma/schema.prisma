@@ -27,11 +27,43 @@ model Project {
   tone             String?
   timezone         String    @default("Europe/Vilnius")
   publishingPolicy String    @default("review") @map("publishing_policy")
+  competitorUrls   String[]  @default([]) @map("competitor_urls")
   status           String    @default("active")
   archivedAt       DateTime? @map("archived_at")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
+  analyses         AnalysisRun[]
 
   @@index([status])
   @@map("projects")
+}
+
+/// A manually triggered, project-scoped analysis of the project website,
+/// objectives, and optional competitors. Runs asynchronously; the research input
+/// is snapshotted at start and the structured suggestions are stored as JSON.
+model AnalysisRun {
+  id                       String    @id @default(uuid())
+  projectId                String    @map("project_id")
+  status                   String    @default("queued")
+  inputSnapshot            Json      @map("input_snapshot")
+  evidence                 Json?
+  result                   Json?
+  error                    String?
+  provider                 String?
+  model                    String?
+  inputTokens              Int?      @map("input_tokens")
+  outputTokens             Int?      @map("output_tokens")
+  estimatedCostUsd         Float?    @map("estimated_cost_usd")
+  projectUpdatedAtSnapshot DateTime? @map("project_updated_at_snapshot")
+  appliedAt                DateTime? @map("applied_at")
+  appliedFields            String[]  @default([]) @map("applied_fields")
+  startedAt                DateTime? @map("started_at")
+  finishedAt               DateTime? @map("finished_at")
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+  project                  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([status])
+  @@map("analysis_runs")
 }

@@ -20,6 +20,7 @@ export interface ProjectView {
   tone: string | null;
   timezone: string;
   publishingPolicy: PublishingPolicy;
+  competitorUrls: string[];
   status: ProjectStatus;
   archivedAt: string | null;
   createdAt: string;

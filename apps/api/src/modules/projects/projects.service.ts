@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/index.js';
+import { normalizeCompetitorUrls } from './competitor-urls.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
 import { UpdateProjectSettingsDto } from './dto/update-project-settings.dto.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
@@ -26,6 +27,7 @@ export class ProjectsService {
         tone: this.clean(dto.tone),
         timezone: dto.timezone?.trim() || 'Europe/Vilnius',
         publishingPolicy: dto.publishingPolicy ?? 'review',
+        competitorUrls: normalizeCompetitorUrls(dto.competitorUrls) ?? [],
       },
     });
     return toProjectView(project as ProjectRecord);
@@ -75,6 +77,7 @@ export class ProjectsService {
       tone?: string | null;
       timezone?: string;
       publishingPolicy?: string;
+      competitorUrls?: string[];
     } = {};
     if (dto.businessContext !== undefined) data.businessContext = this.clean(dto.businessContext);
     if (dto.audience !== undefined) data.audience = this.clean(dto.audience);
@@ -83,6 +86,9 @@ export class ProjectsService {
     if (dto.tone !== undefined) data.tone = this.clean(dto.tone);
     if (dto.timezone !== undefined) data.timezone = dto.timezone.trim();
     if (dto.publishingPolicy !== undefined) data.publishingPolicy = dto.publishingPolicy;
+    if (dto.competitorUrls !== undefined) {
+      data.competitorUrls = normalizeCompetitorUrls(dto.competitorUrls) ?? [];
+    }
 
     const project = await this.prisma.project.update({ where: { id }, data });
     return toProjectView(project as ProjectRecord);

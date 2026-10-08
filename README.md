@@ -7,11 +7,11 @@ website publishing, LinkedIn publishing, and Google performance reporting.
 
 A project-first application plus an unattended deployment pipeline. There is a
 TypeScript ESM pnpm workspace with a Next.js UI and a NestJS API; projects are
-persisted in PostgreSQL. CI produces a deployment artifact consumed by a
-server-side systemd user timer, so the app at
-https://192.168.8.50/seo-stat/ updates automatically from successful `main`
-builds. **No scheduling, generation, publishing, reporting, integrations, or
-aggregate costs** exist yet.
+persisted in PostgreSQL and can be configured from a bounded website/competitor
+analysis. CI produces a deployment artifact consumed by a server-side systemd
+user timer, so the app at https://192.168.8.50/seo-stat/ updates automatically
+from successful `main` builds. **No scheduling, generation, publishing,
+reporting, integrations, or aggregate costs** exist yet.
 
 - Public UI URL: https://192.168.8.50/seo-stat/
 - API prefix: `/seo-stat/api/` (same origin)
@@ -81,7 +81,9 @@ Actions tab.
 
 ## Next steps
 
+- Configure the analysis provider (`OPENAI_API_KEY`) to enable website and
+  competitor analysis (see `docs/deployment.md`).
 - Build project-scoped content, workflow definitions, schedules, and execution
   history (see `docs/functional-architecture.md`).
-- Confirm the open decisions in `docs/architecture.md`.
-- Credentials, external publishing, and AI generation remain later integrations.
+- Credentials, external publishing, and article generation remain later
+  integrations.
