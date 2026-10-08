@@ -50,8 +50,10 @@ and nothing has been deployed. Unknowns are recorded explicitly.
   installation (the validator has no dependencies).
 - CI validates the harness only. It does not build, publish, or deploy the
   application and does not touch the server.
-- Remaining: confirm a green workflow run in the GitHub Actions tab after the
-  bootstrap push. A passing local run is not evidence of a successful CI run.
+- The bootstrap push (commit `55d0322`) produced a successful run:
+  https://github.com/marijustechin/seo-stat/actions/runs/37757718760
+- Going forward, confirm each workflow run in the GitHub Actions tab; a passing
+  local run is not evidence of a successful CI run.
 
 ## Unknown server details
 

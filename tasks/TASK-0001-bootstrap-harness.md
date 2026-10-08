@@ -53,7 +53,11 @@ Out of scope:
   preserve or reconcile.
 - CI workflow added at `.github/workflows/harness.yml` (pushes and pull requests
   to `main`, Node 24, read-only permissions, no install step).
-- CI run result not observed locally: `gh` was unauthenticated at push time.
+- CI run for bootstrap commit `55d0322` completed successfully (GitHub Actions
+  run 37757718760, event `push`):
+  https://github.com/marijustechin/seo-stat/actions/runs/37757718760
+- `gh` was unauthenticated, so the run was read through the public GitHub REST
+  API; the workflow itself was confirmed `active`.
 
 ## Completion notes
 
@@ -66,6 +70,7 @@ Out of scope:
 ## State
 
 - Implementation: complete (harness files, remote, and CI workflow present)
-- Verification: complete (local validator passes; invalid input detected)
+- Verification: complete (local validator passes; invalid input detected; CI green
+  for bootstrap commit `55d0322`)
 - Commit: committed on `main` as the TASK-0001 bootstrap commit
 - Deployment: not deployed / not applicable
