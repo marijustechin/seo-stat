@@ -23,8 +23,8 @@ accept="Accept: application/vnd.github+json"
 api_get() { curl -fsS -H "$auth" -H "$accept" -H 'X-GitHub-Api-Version: 2022-11-28' "$1"; }
 
 json_field() {
-  # json_field <json> <node-snippet-producing-value>
-  node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);process.stdout.write(String((function(){'"$2"'})()??""))}catch{process.stdout.write("")}})'
+  # Reads JSON on stdin; $1 is a Node snippet that returns the value to print.
+  node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);process.stdout.write(String((function(){'"$1"'})()??""))}catch{process.stdout.write("")}})'
 }
 
 runs="$(api_get "$API/repos/$REPO/actions/workflows/$WORKFLOW_FILE/runs?branch=$BRANCH&status=success&event=push&per_page=10" 2>/dev/null || true)"

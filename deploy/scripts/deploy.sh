@@ -16,6 +16,14 @@ CACERT="${SEO_STAT_TLS_CACERT:-}"
 release_dir="${1:?usage: deploy.sh <release_dir>}"
 sha="$(cat "$release_dir/RELEASE_SHA" 2>/dev/null || basename "$release_dir")"
 
+# Load the database URL for prisma generate/migrate. Never printed.
+if [ -r "$ROOT/config/api.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . "$ROOT/config/api.env"
+  set +a
+fi
+
 log() { printf '%s %s\n' "$(date -Is)" "$*"; }
 fail() { log "ERROR: $*"; exit 1; }
 
