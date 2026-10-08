@@ -60,6 +60,38 @@ export function analysisJsonSchema(): Record<string, unknown> {
   return schema;
 }
 
+function clampArray(container: unknown, key: string, max: number): void {
+  if (!container || typeof container !== 'object') return;
+  const record = container as Record<string, unknown>;
+  const value = record[key];
+  if (Array.isArray(value) && value.length > max) {
+    record[key] = value.slice(0, max);
+  }
+}
+
+/**
+ * Normalize then validate. Models occasionally return slightly over-long arrays;
+ * we keep the first N rather than failing an otherwise valid analysis.
+ */
 export function parseAnalysisOutput(value: unknown): AnalysisOutput {
-  return analysisOutputSchema.parse(value);
+  const candidate = value;
+  if (candidate && typeof candidate === 'object') {
+    const record = candidate as Record<string, unknown>;
+    clampArray(record, 'audienceSegments', 8);
+    clampArray(record, 'contentThemes', 10);
+    clampArray(record, 'missingInformation', 10);
+    clampArray(record.businessContext, 'sources', 10);
+    clampArray(record.objectives, 'sources', 10);
+    clampArray(record.tone, 'sources', 10);
+    if (Array.isArray(record.audienceSegments)) {
+      for (const segment of record.audienceSegments) {
+        clampArray(segment, 'sources', 10);
+        clampArray(segment, 'contentDirections', 8);
+      }
+    }
+    if (Array.isArray(record.contentThemes)) {
+      for (const theme of record.contentThemes) clampArray(theme, 'sources', 10);
+    }
+  }
+  return analysisOutputSchema.parse(candidate);
 }

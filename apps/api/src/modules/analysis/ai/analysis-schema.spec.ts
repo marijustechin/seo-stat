@@ -43,6 +43,12 @@ describe('analysis output schema', () => {
     expect(() => parseAnalysisOutput({ businessContext: valid.businessContext })).toThrow();
   });
 
+  it('clamps over-long arrays instead of failing', () => {
+    const many = Array.from({ length: 15 }, (_value, index) => ({ question: `q${index}`, why: 'w' }));
+    const parsed = parseAnalysisOutput({ ...valid, missingInformation: many });
+    expect(parsed.missingInformation).toHaveLength(10);
+  });
+
   it('produces a strict JSON schema for the provider', () => {
     const schema = analysisJsonSchema();
     expect(schema.type).toBe('object');
