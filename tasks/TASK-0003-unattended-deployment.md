@@ -71,26 +71,42 @@ Out of scope:
   `systemctl --user start seo-stat-deploy.service` completed with `Result=success`
   and logged `no readable token ... skipping`, confirming serialization and clean
   handling of a missing credential.
-- CI verified: GitHub Actions run 37765600853 on commit `4550e36` completed
-  successfully and produced the artifact `seo-stat-deploy-4550e3677ec1440e6dddf7de7a69a3e78160c694`
-  (1.63 MB). A first run (37764253751) failed in the packaging step; the archive
-  is now written outside the tree with `--warning=no-file-changed`.
-- Not yet verified: an actual GitHub Actions artifact download on the server, and
-  the first end-to-end deployment. Blocked on the administrator bootstrap
-  (PostgreSQL role/database and nginx include) and a GitHub download token.
+- GitHub token verified on the server: `/srv/seo-stat/config/github.token` is
+  owned by `seostat`, mode 0600, and the Actions API returned HTTP 200 (the
+  token is never printed).
+- Admin prerequisites still required: with the shipped placeholder `api.env`,
+  database authentication fails, and the nginx snippet/include are absent. The
+  required utilities (`unzip`, `curl`, `tar`, `gzip`, `flock`, `pg_dump`) are
+  present.
+- Defects fixed during this task: `backup-db.sh` now strips Prisma's `?schema=`
+  parameter before `pg_dump`; `bootstrap-admin.sh` generates a password when the
+  shipped placeholder is present; a failed first deploy now stops the services
+  and clears `current` so a later poll can retry.
+- CI verified: runs completed successfully and produced SHA-tied artifacts,
+  most recently run 37768742656 on commit `2fe962d` with artifact
+  `seo-stat-deploy-2fe962d36a0c272c09b7d0f260d0dfc47fa0fb65` (1.63 MB). An earlier
+  run (37764253751) failed in the packaging step; the archive is now written
+  outside the tree with `--warning=no-file-changed`.
+- Server deploy scripts were synced from the committed revision `2fe962d`;
+  `/srv/seo-stat/scripts/bootstrap-admin.sh` matches it (sha256) and all scripts
+  pass `bash -n`.
+- Not yet verified: the first end-to-end deployment. Blocked on the
+  administrator bootstrap (PostgreSQL role/database and nginx include).
 
 ## Completion notes
 
-- Blocking prerequisites (one-time):
-  1. Administrator runs `sudo bash deploy/scripts/bootstrap-admin.sh` on the
-     server (creates the `seostat` PostgreSQL role and `seo_stat` database,
-     writes `api.env`, installs the nginx include, installs `unzip`, enables
-     linger).
-  2. `seostat` runs `bash deploy/scripts/install-user-units.sh` and places a
-     minimally scoped GitHub token (Actions: read) at
-     `/srv/seo-stat/config/github.token` (mode 0600).
-- Once both are done, the timer deploys the latest successful `main` artifact
-  automatically; no recurring operator approval is required.
+- One-time administrator prerequisite remaining (the GitHub token is done):
+  run on the server as an administrator:
+  `sudo bash /srv/seo-stat/scripts/bootstrap-admin.sh`
+  It creates the `seostat` PostgreSQL role and `seo_stat` database and writes
+  `/srv/seo-stat/config/api.env` (mode 0600, seostat-owned), installs
+  `/etc/nginx/snippets/seo-stat.locations.conf` and adds its `include` to the
+  `192.168.8.50` server block with an `nginx -t` reload, installs `unzip` if
+  missing, ensures the `/srv/seo-stat` directories, and enables lingering.
+- The systemd user units are already installed and enabled, and the deploy timer
+  is active, so once the administrator step completes, the timer deploys the
+  latest successful `main` artifact automatically within a few minutes, with no
+  recurring operator approval.
 - Rollback restores the previous application release only; it does not reverse
   database migrations.
 - Recommended next task: persistent schedules, safe job claiming, execution

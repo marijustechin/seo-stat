@@ -87,8 +87,12 @@ never committed and never printed.
 
 `seostat` cannot do these; run the bootstrap as an administrator:
 
+From a repository checkout: `sudo bash deploy/scripts/bootstrap-admin.sh`.
+On the server the deployed copy (matching the committed revision) is at
+`/srv/seo-stat/scripts/bootstrap-admin.sh`:
+
 ```
-sudo bash deploy/scripts/bootstrap-admin.sh
+sudo bash /srv/seo-stat/scripts/bootstrap-admin.sh
 ```
 
 It is idempotent and:
