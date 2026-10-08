@@ -168,9 +168,15 @@ schedules, Google metrics, and a general workflow builder.
 - Verification: `deepseek.provider.spec.ts` added (unconfigured without the key,
   configured with it, default model `deepseek-flash`); typecheck, lint, unit
   tests, API e2e, build, harness, and subpath smoke pass; deployed automatically.
-- Live AI: still pending — no `DEEPSEEK_API_KEY` is configured on the server.
-  Once set, run TexTrade UK's analysis from Settings without applying
-  suggestions, and record the observed run.
+- Live after automatic deployment (SHA `00c5f1b`, CI run 37787274643 succeeded):
+  `/seo-stat/api/system/status` reports provider `deepseek`, model
+  `deepseek-flash`, `configured:false`; a bodyless analysis POST returns `503
+  {"message":"Analysis is not configured on the server."}` (not the parser
+  error); Settings, health, and unrelated pages return 200.
+- Live AI execution remains pending: no `DEEPSEEK_API_KEY` is configured on the
+  server (`config/api.env` has DATABASE_URL/PORT/NODE_ENV only). Once set, run
+  TexTrade UK's analysis from Settings without applying suggestions, and record
+  the observed run.
 
 ## State
 
