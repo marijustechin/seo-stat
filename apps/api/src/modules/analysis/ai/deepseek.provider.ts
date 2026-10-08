@@ -42,7 +42,11 @@ export class DeepSeekAnalysisProvider extends AnalysisProvider {
     if (!this.client) {
       throw new Error('Analysis provider is not configured.');
     }
-    const completion = await this.client.chat.completions.create({
+    // DeepSeek enables thinking mode by default. Disable it so the output budget
+    // is spent on the JSON answer rather than hidden reasoning, which otherwise
+    // truncates the JSON. `thinking` is forwarded as an OpenAI-compatible field
+    // (DeepSeek's documented parameter for the OpenAI format).
+    const params = {
       model: this.model,
       messages: [
         { role: 'system', content: request.system },
@@ -50,7 +54,14 @@ export class DeepSeekAnalysisProvider extends AnalysisProvider {
       ],
       response_format: { type: 'json_object' },
       max_tokens: request.maxOutputTokens,
-    });
+      thinking: { type: 'disabled' },
+    };
+    const completion = (await this.client.chat.completions.create(
+      params as unknown as Parameters<typeof this.client.chat.completions.create>[0],
+    )) as {
+      choices: Array<{ message?: { content?: string | null; refusal?: string | null } }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number } | null;
+    };
 
     const choice = completion.choices[0];
     if (choice?.message?.refusal) {

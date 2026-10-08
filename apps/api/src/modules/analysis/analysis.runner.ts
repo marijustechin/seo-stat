@@ -109,6 +109,8 @@ export class AnalysisRunner implements OnModuleInit {
           outputTokens: modelResult.outputTokens,
           estimatedCostUsd: estimateCost(modelResult.inputTokens, modelResult.outputTokens),
           evidence: {
+            backend: research.backend,
+            firecrawlCredits: research.firecrawlCredits,
             pages: research.pages,
             failures: research.failures,
             websiteReadable: research.websiteReadable,

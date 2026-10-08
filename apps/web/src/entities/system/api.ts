@@ -6,6 +6,10 @@ export interface SystemStatus {
     model: string;
     configured: boolean;
     limits: Record<string, number>;
+    research: {
+      direct: { configured: boolean };
+      firecrawl: { configured: boolean };
+    };
   };
 }
 

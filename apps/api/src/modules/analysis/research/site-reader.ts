@@ -70,7 +70,7 @@ function extractLinks(html: string, baseUrl: URL): string[] {
   return [...links];
 }
 
-function scoreLink(url: string): number {
+export function scoreLink(url: string): number {
   const lower = url.toLowerCase();
   let score = 0;
   for (const keyword of KEYWORDS) if (lower.includes(keyword)) score += 1;

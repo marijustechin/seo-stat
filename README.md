@@ -82,7 +82,8 @@ Actions tab.
 ## Next steps
 
 - Configure the analysis provider (`DEEPSEEK_API_KEY`) to enable website and
-  competitor analysis (see `docs/deployment.md`).
+  competitor analysis, and optionally `FIRECRAWL_API_KEY` for the preferred
+  research backend (see `docs/deployment.md`).
 - Build project-scoped content, workflow definitions, schedules, and execution
   history (see `docs/functional-architecture.md`).
 - Credentials, external publishing, and article generation remain later

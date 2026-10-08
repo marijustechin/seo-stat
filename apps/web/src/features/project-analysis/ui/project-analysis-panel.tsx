@@ -169,6 +169,14 @@ export function ProjectAnalysisPanel() {
               ? ` · tokens ${latest.inputTokens}/${latest.outputTokens ?? 0} · ${costLabel(latest)}`
               : ''}
           </p>
+          {latest.evidence && (
+            <p className="muted">
+              Research backend: {latest.evidence.backend ?? 'direct'}
+              {typeof latest.evidence.firecrawlCredits === 'number'
+                ? ` · Firecrawl credits ${latest.evidence.firecrawlCredits}`
+                : ''}
+            </p>
+          )}
           {latest.error && (
             <p className="status-error" role="alert">
               {latest.error}

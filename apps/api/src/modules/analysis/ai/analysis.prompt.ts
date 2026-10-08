@@ -2,10 +2,15 @@ import { ANALYSIS_LIMITS } from '../analysis.limits.js';
 import type { AnalysisInputSnapshot } from '../analysis.types.js';
 import type { EvidenceFailure, EvidencePage } from '../research/site-reader.js';
 
+export type ResearchBackend = 'direct' | 'firecrawl';
+
 export interface PromptResearch {
   pages: EvidencePage[];
   failures: EvidenceFailure[];
   websiteReadable: boolean;
+  backend: ResearchBackend;
+  /** Firecrawl-reported credit usage, or null when it is not reported. */
+  firecrawlCredits: number | null;
 }
 
 const SYSTEM_PROMPT = [

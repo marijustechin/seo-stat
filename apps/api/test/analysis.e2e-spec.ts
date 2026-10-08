@@ -92,6 +92,8 @@ class StubResearch extends AnalysisResearch {
       ],
       failures: [],
       websiteReadable: true,
+      backend: 'direct' as const,
+      firecrawlCredits: null,
     };
   }
 }

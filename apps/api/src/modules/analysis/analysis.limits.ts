@@ -24,8 +24,11 @@ export const ANALYSIS_LIMITS = {
   maxCharsPerPage: 8_000,
   /** Maximum total research characters sent to the model. */
   maxInputChars: 60_000,
-  /** Maximum tokens requested from the model. */
-  maxOutputTokens: 2_500,
+  /**
+   * Maximum tokens requested from the model. The structured suggestion output is
+   * verbose, so this is generous; thinking mode is disabled for this call.
+   */
+  maxOutputTokens: 8_000,
 } as const;
 
 export function describeAnalysisScope(): string {

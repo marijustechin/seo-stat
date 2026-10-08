@@ -4,7 +4,9 @@ import { AnalysisRunner } from './analysis.runner.js';
 import { AnalysisService } from './analysis.service.js';
 import { AnalysisProvider } from './ai/ai-provider.js';
 import { DeepSeekAnalysisProvider } from './ai/deepseek.provider.js';
-import { AnalysisResearch, SiteResearchService } from './research/research.service.js';
+import { FirecrawlResearchService } from './research/firecrawl.research.js';
+import { AnalysisResearch } from './research/research.port.js';
+import { ResearchCoordinator, SiteResearchService } from './research/research.service.js';
 
 @Module({
   controllers: [AnalysisController],
@@ -12,8 +14,11 @@ import { AnalysisResearch, SiteResearchService } from './research/research.servi
     AnalysisService,
     AnalysisRunner,
     { provide: AnalysisProvider, useClass: DeepSeekAnalysisProvider },
-    { provide: AnalysisResearch, useClass: SiteResearchService },
+    SiteResearchService,
+    FirecrawlResearchService,
+    ResearchCoordinator,
+    { provide: AnalysisResearch, useExisting: ResearchCoordinator },
   ],
-  exports: [AnalysisService, AnalysisProvider, AnalysisResearch],
+  exports: [AnalysisService, AnalysisProvider, AnalysisResearch, ResearchCoordinator],
 })
 export class AnalysisModule {}

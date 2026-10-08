@@ -25,7 +25,7 @@ export function SystemStatusCard() {
 
   return (
     <section className="card" aria-labelledby="analysis-status-title">
-      <h2 id="analysis-status-title">Analysis provider</h2>
+      <h2 id="analysis-status-title">Analysis configuration</h2>
       {state.kind === 'loading' && <p role="status">Checking configuration…</p>}
       {state.kind === 'error' && (
         <p className="status-error" role="alert">
@@ -34,19 +34,31 @@ export function SystemStatusCard() {
       )}
       {state.kind === 'ready' && (
         <>
+          <h3>AI analysis provider</h3>
           <p>
             Provider: <strong>{state.status.analysis.provider}</strong> · model{' '}
             <strong>{state.status.analysis.model}</strong>
           </p>
           {state.status.analysis.configured ? (
             <p className="status-ok" role="status">
-              Analysis is configured. Website &amp; competitor analysis is available.
+              DeepSeek is configured. Analysis and suggestions are available.
             </p>
           ) : (
             <p className="status-error" role="status">
-              Analysis is not configured. An administrator must set the provider credential
-              (DEEPSEEK_API_KEY) on the server to enable it. Credentials are server-side only and
-              are never exposed here.
+              DeepSeek is not configured, so analysis is unavailable. An administrator must set
+              DEEPSEEK_API_KEY on the server. Credentials are server-side only and never exposed
+              here.
+            </p>
+          )}
+
+          <h3>Research backend</h3>
+          {state.status.analysis.research.firecrawl.configured ? (
+            <p className="status-ok" role="status">
+              Firecrawl is configured and is used to acquire page content (preferred).
+            </p>
+          ) : (
+            <p role="status">
+              Firecrawl is not configured; the direct fetch backend is used to acquire content.
             </p>
           )}
         </>

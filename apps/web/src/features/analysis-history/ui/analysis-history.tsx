@@ -77,6 +77,15 @@ export function AnalysisHistory() {
                     </dd>
                   </div>
                   <div>
+                    <dt>Research</dt>
+                    <dd>
+                      {run.evidence?.backend ?? 'direct'}
+                      {typeof run.evidence?.firecrawlCredits === 'number'
+                        ? ` · ${run.evidence.firecrawlCredits} credits`
+                        : ''}
+                    </dd>
+                  </div>
+                  <div>
                     <dt>Applied</dt>
                     <dd>{run.appliedAt ? `${run.appliedAt} (${run.appliedFields.join(', ') || 'none'})` : 'not applied'}</dd>
                   </div>

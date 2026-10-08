@@ -178,6 +178,35 @@ schedules, Google metrics, and a general workflow builder.
   TexTrade UK's analysis from Settings without applying suggestions, and record
   the observed run.
 
+## Supplement — optional Firecrawl research integration
+
+- Firecrawl is the preferred research backend when `FIRECRAWL_API_KEY` is set;
+  the existing direct fetch backend is retained when it is absent. DeepSeek
+  remains responsible for analysis and suggestions; Firecrawl only acquires
+  content.
+- Verified against the official Firecrawl docs: `POST
+  https://api.firecrawl.dev/v2/scrape` with `formats: ["markdown","links"]`,
+  `onlyMainContent: true`, and a per-run timeout. Individual URLs only — never an
+  unrestricted full-domain crawl. The bounded page/input/timeout/retry limits are
+  unchanged.
+- Every requested URL is pre-validated against the public-URL rules before it is
+  sent to Firecrawl. Difference (documented): the direct backend enforces
+  public-URL rules at connect time (DNS/IP and redirect hops); Firecrawl fetches
+  from its own network, so our local protections do not govern its fetch and the
+  provider's egress applies. Fetched content remains untrusted research material.
+- Each run records the research backend, source URLs, retrieval timestamps,
+  failures, and any Firecrawl-reported credit usage
+  (`metadata.provider.creditsCost` or an `x-credits-used` header), otherwise
+  `null` — usage is never fabricated or costed against another provider.
+- System shows separate configuration states for DeepSeek (AI) and Firecrawl
+  (research). Both credentials are server-side only.
+- Implementation: `FirecrawlResearchService` and a `ResearchCoordinator` that
+  prefers Firecrawl; the `AnalysisProvider`/`AnalysisResearch` interfaces are
+  unchanged.
+- Verification: unit tests cover Firecrawl configuration and backend selection
+  (Firecrawl preferred when configured, direct otherwise); typecheck, lint, unit
+  tests, API e2e, build, harness, and subpath smoke pass.
+
 ## State
 
 - Implementation: complete

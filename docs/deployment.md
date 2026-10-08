@@ -98,8 +98,14 @@ never committed and never printed.
   DeepSeek publishes cache-miss input and output rates that vary by peak/off-peak
   hours.
 - Structured output uses DeepSeek's JSON Output
-  (`response_format: { type: 'json_object' }`) and the response is validated
-  against the schema before use.
+  (`response_format: { type: 'json_object' }`); thinking mode is disabled for the
+  analysis call and the response is validated against the schema before use.
+- Research backend: Firecrawl is preferred when `FIRECRAWL_API_KEY` is set
+  (`FIRECRAWL_BASE_URL` defaults to `https://api.firecrawl.dev`), otherwise the
+  direct fetch backend is used. Both are server-side; each run records the
+  backend, source URLs, timestamps, failures, and any Firecrawl-reported credit
+  usage (null when not reported). The System page shows DeepSeek and Firecrawl
+  configuration states separately.
 - Research limits and SSRF protections are documented in
   `docs/functional-architecture.md` and enforced in code. The credential is set
   by the administrator/operator; the bootstrap script does not create it.

@@ -61,6 +61,8 @@ export interface EvidenceFailure {
 }
 
 export interface AnalysisEvidence {
+  backend?: 'direct' | 'firecrawl';
+  firecrawlCredits?: number | null;
   pages: EvidencePage[];
   failures: EvidenceFailure[];
   websiteReadable: boolean;

@@ -64,7 +64,18 @@ website, objectives, and optional competitor URLs.
   audience, contact) from the project site and each competitor. Concrete limits:
   up to 6 project pages, 3 per competitor, 15 pages total, 5 competitors, 4
   redirects, 2 MB per page, 10 s timeout, 1 retry, 8 000 chars/page, 60 000 input
-  chars, 2 500 output tokens.
+  chars, 8 000 output tokens (thinking mode is disabled for the analysis call so
+  the budget is spent on the JSON answer).
+- Research backends: **Firecrawl** is preferred when `FIRECRAWL_API_KEY` is
+  configured and acquires clean Markdown for the selected pages; otherwise the
+  direct fetch backend is used. Firecrawl never runs an unrestricted full-domain
+  crawl (individual URLs only). Both backends preserve the same page/input/time
+  limits and treat fetched content as untrusted. Difference: the direct backend
+  enforces public-URL rules at connect time (DNS/IP, redirect hops), whereas
+  Firecrawl fetches from its own network, so we still pre-validate every URL we
+  send but the provider's egress governs its actual fetch. Each run records its
+  backend, source URLs, retrieval timestamps, failures, and any Firecrawl-reported
+  credit usage (null when not reported).
 - SSRF protection: only http/https on ports 80/443; credentials, localhost and
   internal hostnames, and private/loopback/link-local/metadata/reserved
   addresses are rejected at connect time (DNS resolution and every redirect hop).

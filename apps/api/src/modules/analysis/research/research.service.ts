@@ -2,12 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { ANALYSIS_LIMITS } from '../analysis.limits.js';
 import type { AnalysisInputSnapshot } from '../analysis.types.js';
 import type { PromptResearch } from '../ai/analysis.prompt.js';
+import { FirecrawlResearchService } from './firecrawl.research.js';
+import { AnalysisResearch } from './research.port.js';
 import { readSite, type EvidenceFailure, type EvidencePage } from './site-reader.js';
 
-/** Research boundary; tests provide a fixture implementation instead of network. */
-export abstract class AnalysisResearch {
-  abstract collect(snapshot: AnalysisInputSnapshot): Promise<PromptResearch>;
-}
+export { AnalysisResearch } from './research.port.js';
 
 function truncateExcerpts(pages: EvidencePage[], maxChars: number): EvidencePage[] {
   let remaining = maxChars;
@@ -18,6 +17,7 @@ function truncateExcerpts(pages: EvidencePage[], maxChars: number): EvidencePage
   });
 }
 
+/** Direct, dependency-free HTTP research with SSRF protections. */
 @Injectable()
 export class SiteResearchService extends AnalysisResearch {
   async collect(snapshot: AnalysisInputSnapshot): Promise<PromptResearch> {
@@ -40,6 +40,37 @@ export class SiteResearchService extends AnalysisResearch {
     }
 
     const websiteReadable = pages.some((page) => page.source === 'website');
-    return { pages: truncateExcerpts(pages, ANALYSIS_LIMITS.maxInputChars), failures, websiteReadable };
+    return {
+      pages: truncateExcerpts(pages, ANALYSIS_LIMITS.maxInputChars),
+      failures,
+      websiteReadable,
+      backend: 'direct',
+      firecrawlCredits: null,
+    };
+  }
+}
+
+/**
+ * Selects the preferred research backend: Firecrawl when FIRECRAWL_API_KEY is
+ * configured, otherwise the direct fetch backend. DeepSeek remains responsible
+ * for analysis; research backends only acquire content.
+ */
+@Injectable()
+export class ResearchCoordinator extends AnalysisResearch {
+  constructor(
+    private readonly direct: SiteResearchService,
+    private readonly firecrawl: FirecrawlResearchService,
+  ) {
+    super();
+  }
+
+  firecrawlConfigured(): boolean {
+    return this.firecrawl.isConfigured();
+  }
+
+  collect(snapshot: AnalysisInputSnapshot): Promise<PromptResearch> {
+    return this.firecrawl.isConfigured()
+      ? this.firecrawl.collect(snapshot)
+      : this.direct.collect(snapshot);
   }
 }

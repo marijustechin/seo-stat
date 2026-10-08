@@ -13,6 +13,7 @@ import type { AnalysisInputSnapshot, AnalysisRunView, AnalysisStatus } from './a
 import type { AnalysisOutput } from './ai/analysis-schema.js';
 import { AnalysisProvider, type ProviderStatus } from './ai/ai-provider.js';
 import { ApplySuggestionsDto } from './dto/apply-suggestions.dto.js';
+import { ResearchCoordinator } from './research/research.service.js';
 
 interface AnalysisRunRecord {
   id: string;
@@ -41,14 +42,22 @@ export class AnalysisService {
     private readonly prisma: PrismaService,
     private readonly runner: AnalysisRunner,
     private readonly provider: AnalysisProvider,
+    private readonly research: ResearchCoordinator,
   ) {}
 
-  status(): ProviderStatus & { limits: typeof ANALYSIS_LIMITS } {
+  status(): ProviderStatus & {
+    limits: typeof ANALYSIS_LIMITS;
+    research: { direct: { configured: boolean }; firecrawl: { configured: boolean } };
+  } {
     return {
       provider: this.provider.providerId,
       model: this.provider.model,
       configured: this.provider.isConfigured(),
       limits: ANALYSIS_LIMITS,
+      research: {
+        direct: { configured: true },
+        firecrawl: { configured: this.research.firecrawlConfigured() },
+      },
     };
   }
 
