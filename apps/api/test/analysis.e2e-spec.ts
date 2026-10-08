@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/bootstrap/configure-app.js';
 import { PrismaService } from '../src/database/index.js';
+import type { Prisma } from '../src/generated/prisma/client.js';
 import { AnalysisRunner } from '../src/modules/analysis/analysis.runner.js';
 import {
   AnalysisProvider,
@@ -240,6 +241,71 @@ describe('Analysis (integration, mocked provider)', () => {
       businessContext: true,
     });
     expect(apply.statusCode).toBe(409);
+  });
+
+  it('rejects an overlong tone but applies other fields (isolated seeded run)', async () => {
+    const project = await prisma.project.create({ data: { name: 'Apply Limits', tone: 'original tone' } });
+    created.push(project.id);
+
+    const longTone = 'x'.repeat(200);
+    const seededResult = {
+      businessContext: { value: 'Seeded context', origin: 'website', confidence: 'medium', sources: [], rationale: 'r' },
+      audienceSegments: [
+        {
+          name: 'A',
+          needs: 'n',
+          offering: 'o',
+          desiredAction: 'd',
+          contentDirections: [],
+          origin: 'user',
+          confidence: 'high',
+          sources: [],
+        },
+      ],
+      objectives: { value: 'Seeded objectives', origin: 'user', confidence: 'high', sources: [], rationale: 'r' },
+      tone: { value: longTone, origin: 'inference', confidence: 'medium', sources: [], rationale: 'long tone' },
+      contentThemes: [{ theme: 't', rationale: 'r', origin: 'inference', sources: [] }],
+      missingInformation: [{ question: 'Which regions?', why: 'targeting' }],
+    };
+    const run = await prisma.analysisRun.create({
+      data: {
+        projectId: project.id,
+        status: 'completed',
+        inputSnapshot: {} as Prisma.InputJsonValue,
+        result: seededResult as unknown as Prisma.InputJsonValue,
+        projectUpdatedAtSnapshot: project.updatedAt,
+      },
+    });
+
+    const rejected = await call('POST', `/projects/${project.id}/analysis/${run.id}/apply`, {
+      tone: true,
+      toneValue: longTone,
+    });
+    expect(rejected.statusCode).toBe(400);
+
+    const applied = await call('POST', `/projects/${project.id}/analysis/${run.id}/apply`, {
+      businessContext: true,
+      objectives: true,
+      businessContextValue: 'New context',
+      objectivesValue: 'New objectives',
+    });
+    expect(applied.statusCode).toBe(201);
+    const after = (await call('GET', `/projects/${project.id}`)).json();
+    expect(after.businessContext).toBe('New context');
+    expect(after.objectives).toBe('New objectives');
+    expect(after.tone).toBe('original tone');
+    expect(after.publishingPolicy).toBe('review');
+
+    const acceptedTone = await call('POST', `/projects/${project.id}/analysis/${run.id}/apply`, {
+      tone: true,
+      toneValue: 'concise tone',
+      acknowledgeConflict: true,
+    });
+    expect(acceptedTone.statusCode).toBe(201);
+    expect((await call('GET', `/projects/${project.id}`)).json().tone).toBe('concise tone');
+
+    const runAfter = (await call('GET', `/projects/${project.id}/analysis/${run.id}`)).json();
+    expect(runAfter.result.missingInformation).toHaveLength(1);
   });
 
   it('keeps projects isolated', async () => {

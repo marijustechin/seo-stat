@@ -436,6 +436,26 @@ a {
   font-size: 0.85rem;
 }
 
+.counter {
+  margin-left: 0.4rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.counter-over {
+  color: var(--error);
+  font-weight: 600;
+}
+
+.save-summary {
+  margin: 0.5rem 0;
+}
+
+.save-summary p {
+  margin: 0;
+}
+
 .form-actions {
   display: flex;
   gap: 0.6rem;

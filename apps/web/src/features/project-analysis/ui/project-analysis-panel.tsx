@@ -6,6 +6,7 @@ import type { AnalysisRunView } from '@/entities/analysis/model';
 import { getSystemStatus } from '@/entities/system/api';
 import { ApiError } from '@/shared/api/client';
 import { describeLimits } from '@/shared/config/analysis';
+import type { AppliedField } from '@/shared/config/suggestion-limits';
 import { useProject } from '@/widgets/project-workspace/project-context';
 import { AnalysisResultView } from './analysis-result-view';
 
@@ -42,7 +43,7 @@ function startErrorMessage(error: unknown): string {
 }
 
 export function ProjectAnalysisPanel() {
-  const { project, refresh } = useProject();
+  const { project, refresh, notifyApplied } = useProject();
   const [runs, setRuns] = useState<AnalysisRunView[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -102,7 +103,8 @@ export function ProjectAnalysisPanel() {
     }
   };
 
-  const onApplied = async () => {
+  const onApplied = async (values: Partial<Record<AppliedField, string | null>>) => {
+    notifyApplied(values);
     await refresh();
     await load();
   };
@@ -197,7 +199,11 @@ export function ProjectAnalysisPanel() {
                 {showResult ? 'Hide latest suggestions' : 'Show latest suggestions'}
               </button>
               {showResult && (
-                <AnalysisResultView projectId={project.id} run={latest} onApplied={onApplied} />
+                <AnalysisResultView
+                  projectId={project.id}
+                  run={latest}
+                  onApplied={(values) => void onApplied(values)}
+                />
               )}
             </>
           )}

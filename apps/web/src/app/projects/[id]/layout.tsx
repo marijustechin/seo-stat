@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { getProject } from '@/entities/project/api';
 import type { ProjectView } from '@/entities/project/model';
 import { ApiError } from '@/shared/api/client';
+import type { AppliedField } from '@/shared/config/suggestion-limits';
 import { ProjectProvider } from '@/widgets/project-workspace/project-context';
 import { ProjectHeader } from '@/widgets/project-workspace/project-header';
 import { ProjectNav } from '@/widgets/project-workspace/project-nav';
@@ -17,6 +18,17 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [applied, setApplied] = useState<{ revision: number; values: Partial<Record<AppliedField, string | null>> }>({
+    revision: 0,
+    values: {},
+  });
+
+  const notifyApplied = useCallback(
+    (values: Partial<Record<AppliedField, string | null>>) => {
+      setApplied((current) => ({ revision: current.revision + 1, values }));
+    },
+    [],
+  );
 
   const load = useCallback(async () => {
     try {
@@ -76,7 +88,7 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ProjectProvider value={{ project, refresh: load }}>
+    <ProjectProvider value={{ project, refresh: load, applied, notifyApplied }}>
       <ProjectHeader project={project} />
       <ProjectNav projectId={project.id} />
       <div className="workspace-content">{children}</div>

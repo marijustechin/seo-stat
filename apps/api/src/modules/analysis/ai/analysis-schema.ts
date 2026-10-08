@@ -19,6 +19,16 @@ const suggestion = z.strictObject({
   rationale: z.string().max(1000),
 });
 
+// Tone is a concise, usable instruction (matches the project field limit of
+// 120). Longer explanation belongs in `rationale`.
+const toneSuggestion = z.strictObject({
+  value: z.string().max(120),
+  origin,
+  confidence,
+  sources: z.array(sourceRef).max(10),
+  rationale: z.string().max(1000),
+});
+
 const audienceSegment = z.strictObject({
   name: z.string().max(200),
   needs: z.string().max(1000),
@@ -46,7 +56,7 @@ export const analysisOutputSchema = z.strictObject({
   businessContext: suggestion,
   audienceSegments: z.array(audienceSegment).min(1).max(8),
   objectives: suggestion,
-  tone: suggestion,
+  tone: toneSuggestion,
   contentThemes: z.array(contentTheme).min(1).max(10),
   missingInformation: z.array(missingInformation).max(10),
 });

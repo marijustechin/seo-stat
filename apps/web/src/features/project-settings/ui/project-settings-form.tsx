@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import {
   archiveProject,
   restoreProject,
@@ -31,7 +31,8 @@ interface SettingsForm {
 }
 
 export function ProjectSettingsForm() {
-  const { project, refresh } = useProject();
+  const { project, refresh, applied } = useProject();
+  const appliedRevision = useRef(0);
   const [form, setForm] = useState<SettingsForm>({
     name: project.name,
     description: project.description ?? '',
@@ -49,6 +50,27 @@ export function ProjectSettingsForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (applied.revision === 0 || applied.revision === appliedRevision.current) return;
+    appliedRevision.current = applied.revision;
+    // Merge only the applied fields so unsaved edits to other fields are kept
+    // and a later Save cannot overwrite applied values with stale state.
+    setForm((current) => ({
+      ...current,
+      ...(applied.values.businessContext !== undefined
+        ? { businessContext: applied.values.businessContext ?? '' }
+        : {}),
+      ...(applied.values.audience !== undefined
+        ? { audience: applied.values.audience ?? '' }
+        : {}),
+      ...(applied.values.objectives !== undefined
+        ? { objectives: applied.values.objectives ?? '' }
+        : {}),
+      ...(applied.values.tone !== undefined ? { tone: applied.values.tone ?? '' } : {}),
+    }));
+    setSaved(false);
+  }, [applied]);
 
   const update =
     (key: keyof typeof form) =>

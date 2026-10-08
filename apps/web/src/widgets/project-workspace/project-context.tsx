@@ -2,10 +2,19 @@
 
 import { createContext, useContext } from 'react';
 import type { ProjectView } from '@/entities/project/model';
+import type { AppliedField } from '@/shared/config/suggestion-limits';
+
+export interface AppliedPatch {
+  revision: number;
+  values: Partial<Record<AppliedField, string | null>>;
+}
 
 export interface ProjectContextValue {
   project: ProjectView;
   refresh: () => Promise<void>;
+  /** Signals the Settings form to sync applied values without discarding edits. */
+  applied: AppliedPatch;
+  notifyApplied: (values: Partial<Record<AppliedField, string | null>>) => void;
 }
 
 const ProjectContext = createContext<ProjectContextValue | null>(null);

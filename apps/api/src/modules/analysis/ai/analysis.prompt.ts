@@ -34,6 +34,9 @@ const SYSTEM_PROMPT = [
   '- If something is unknown or unsupported, put it in `missingInformation` as a',
   '  targeted question instead of asserting it.',
   '- Return only a single JSON object, with no surrounding text.',
+  '- Field limits: tone.value must be a concise instruction of at most 120',
+  '  characters; put any longer explanation in tone.rationale. businessContext.value',
+  '  and objectives.value must be at most 2000 characters each.',
 ].join('\n');
 
 const JSON_EXAMPLE = JSON.stringify({
