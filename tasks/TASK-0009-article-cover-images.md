@@ -125,18 +125,38 @@ changes.
 
 - Implementation: complete
 - Verification: complete for the implemented behavior (mocked e2e + type/lint/
-  build + live upload/serve/persistence checks). **Live image-generation
+  build + a live upload/serve/persistence check). **Live image-generation
   verification is pending** — see below.
-- Commit: committed on `main` (this completion commit)
-- Deployment: deployed automatically by the systemd user timer (see live note)
+- Commit: committed on `main` (`dfad7b2`)
+- Deployment: deployed automatically by the systemd user timer (`dfad7b2`; see
+  live note)
 
 ## Live verification (deployed release)
 
-- Deployment of this completion commit: see the follow-up record note (SHA and
-  deploy log), including migration status and health.
-- Live **cover upload** journey (no credential needed) is verified in the mocked
-  e2e suite and re-checked against the deployed release; asset persistence across
-  deployment is verified by the asset directory living outside `releases/`.
+- Deployed release `dfad7b2` via the systemd user timer; deploy log shows "No
+  pending migrations to apply" and "health checks passed"; loopback health 200.
+  System status: `image: { provider: "openai-images", model:
+  "gpt-image-2.5-flare", configured: false }`.
+- Live cover journey against the deployed release (upload needs no credential),
+  on an existing project draft, then removed:
+  - `POST .../images/upload` → 201, `kind: uploaded`, `status: ready`, width 1,
+    bytes 70, `usage: null`.
+  - reload (list) → alt text `Live upload alt` persisted.
+  - `select` → 201; reload → `selected: true` persisted.
+  - `PATCH {altText}` → 200; reload → `Updated live alt` persisted.
+  - `GET .../images/:id/file` → 200 `image/png` 70 bytes, with **no
+    authorization header or cookie** (project-scoped only); an unknown image id
+    returns 404.
+  - asset written to `/srv/seo-stat/data/content-images/` (outside `releases/`).
+  - **Persistence across deployment**: after deploying `dfad7b2` (release
+    symlink switch + service restart) the same image was re-served → 200
+    `image/png` 70 bytes and the file was still on disk.
+  - Cleanup: the live-check image row was deleted and the file removed; the
+    draft is back to zero images and the project data is unchanged.
+- `CONTENT_ASSET_DIR=/srv/seo-stat/data/content-images` was added to
+  `/srv/seo-stat/config/api.env`; the directory is created by
+  `bootstrap-admin.sh`/`install-user-units.sh` and never touched by the deploy
+  step.
 
 ## Live image-generation verification (PENDING)
 
