@@ -33,6 +33,10 @@ model Project {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
   analyses         AnalysisRun[]
+  topics           ContentTopic[]
+  briefs           ArticleBrief[]
+  drafts           ArticleDraft[]
+  contentRuns      ContentRun[]
 
   @@index([status])
   @@map("projects")
@@ -66,4 +70,115 @@ model AnalysisRun {
   @@index([projectId, createdAt])
   @@index([status])
   @@map("analysis_runs")
+}
+
+/// A project-scoped content topic suggestion (generated) or a manual topic.
+model ContentTopic {
+  id                String       @id @default(uuid())
+  projectId         String       @map("project_id")
+  title             String
+  audience          String
+  objective         String
+  readerNeed        String?      @map("reader_need")
+  angle             String
+  callToAction      String?      @map("call_to_action")
+  relevance         String?
+  informationNeeded String?      @map("information_needed")
+  origin            String       @default("generated")
+  status            String       @default("suggested")
+  sources           Json?
+  generationRunId   String?      @map("generation_run_id")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  project           Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  brief             ArticleBrief?
+  drafts            ArticleDraft[]
+
+  @@index([projectId, createdAt])
+  @@index([projectId, status])
+  @@map("content_topics")
+}
+
+/// One editable article brief per topic.
+model ArticleBrief {
+  id              String       @id @default(uuid())
+  projectId       String       @map("project_id")
+  topicId         String       @unique @map("topic_id")
+  title           String
+  angle           String
+  audience        String
+  businessOutcome String?      @map("business_outcome")
+  outline         String?
+  callToAction    String?      @map("call_to_action")
+  destinationUrl  String?      @map("destination_url")
+  sources         Json?
+  confirmations   Json?
+  settingsSnapshot Json?       @map("settings_snapshot")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  project         Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  topic           ContentTopic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  drafts          ArticleDraft[]
+
+  @@map("article_briefs")
+}
+
+/// A versioned article draft for a topic. Regeneration appends a new version.
+model ArticleDraft {
+  id               String        @id @default(uuid())
+  projectId        String        @map("project_id")
+  topicId          String        @map("topic_id")
+  briefId          String?       @map("brief_id")
+  version          Int           @default(1)
+  status           String        @default("draft")
+  title            String?
+  excerpt          String?
+  bodyMarkdown     String        @map("body_markdown")
+  slug             String?
+  seoTitle         String?       @map("seo_title")
+  metaDescription  String?       @map("meta_description")
+  callToAction     String?       @map("call_to_action")
+  sources          Json?
+  unresolvedClaims Json?         @map("unresolved_claims")
+  settingsSnapshot Json?         @map("settings_snapshot")
+  briefSnapshot    Json?         @map("brief_snapshot")
+  generationRunId  String?       @map("generation_run_id")
+  savedAt          DateTime?     @map("saved_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  project          Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  topic            ContentTopic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  brief            ArticleBrief? @relation(fields: [briefId], references: [id], onDelete: SetNull)
+
+  @@unique([topicId, version])
+  @@index([projectId, createdAt])
+  @@map("article_drafts")
+}
+
+/// Asynchronous topic/article generation executions (distinct from analyses).
+model ContentRun {
+  id               String    @id @default(uuid())
+  projectId        String    @map("project_id")
+  kind             String
+  topicId          String?   @map("topic_id")
+  draftId          String?   @map("draft_id")
+  status           String    @default("queued")
+  inputSnapshot    Json      @map("input_snapshot")
+  evidence         Json?
+  result           Json?
+  error            String?
+  provider         String?
+  model            String?
+  inputTokens      Int?      @map("input_tokens")
+  outputTokens     Int?      @map("output_tokens")
+  estimatedCostUsd Float?    @map("estimated_cost_usd")
+  startedAt        DateTime? @map("started_at")
+  finishedAt       DateTime? @map("finished_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([status])
+  @@map("content_runs")
 }

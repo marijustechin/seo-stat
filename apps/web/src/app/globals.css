@@ -452,6 +452,63 @@ a {
   margin: 0.5rem 0;
 }
 
+.draft-editor {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.markdown-preview {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  background: var(--card);
+  margin: 0.5rem 0 1rem;
+  overflow-wrap: anywhere;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3 {
+  margin: 0.6rem 0 0.3rem;
+}
+
+.markdown-preview p {
+  margin: 0.4rem 0;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  margin: 0.4rem 0;
+  padding-left: 1.2rem;
+}
+
+.markdown-preview code {
+  background: var(--background);
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.markdown-preview pre {
+  background: var(--background);
+  padding: 0.6rem;
+  border-radius: 6px;
+  overflow: auto;
+}
+
+.markdown-preview pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-preview blockquote {
+  border-left: 3px solid var(--border);
+  margin: 0.4rem 0;
+  padding-left: 0.7rem;
+  color: var(--muted);
+}
+
 .save-summary p {
   margin: 0;
 }

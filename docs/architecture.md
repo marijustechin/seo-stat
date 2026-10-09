@@ -28,7 +28,8 @@ architecture.
   - `src/features` - user-facing capabilities (project list, create, overview,
     settings, health status).
   - `src/entities` - domain models and data access (project, health).
-  - `src/shared` - cross-cutting code (config, API client, small UI).
+  - `src/shared` - cross-cutting code (config, API client, safe Markdown
+    renderer, small UI).
   - Imports flow downward: app -> widgets -> features -> entities -> shared.
 - `apps/api` - NestJS on Fastify.
   - `src/modules/projects` - the projects domain module (controller, service,
@@ -36,6 +37,8 @@ architecture.
   - `src/modules/analysis` - website/competitor analysis: controller, service,
     an in-process runner, SSRF-safe bounded research (`research/`), and one AI
     provider behind an interface (`ai/`, DeepSeek via the OpenAI-compatible SDK).
+  - `src/modules/content` - project content workflow: topics, briefs, versioned
+    drafts, and their asynchronous generation runs.
   - `src/modules/system` - global system status (analysis configuration).
   - `src/modules/health` - health domain module.
   - `src/database` - Prisma infrastructure (`DatabaseModule`, `PrismaService`).

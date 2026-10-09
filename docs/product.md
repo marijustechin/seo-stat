@@ -40,6 +40,10 @@ project management, system settings, and aggregate costs. See
 - Website & competitor analysis: optional competitor URLs (up to five), a
   manually triggered bounded public-website research run, and reviewable,
   evidence-based suggestions that can be selectively applied to settings.
+- Content workflow: business-driven topic suggestions, an editable brief, and
+  versioned, editable article drafts with Markdown editing, safe preview,
+  sources and unresolved claims, and a "ready for review" state (not
+  publication).
 - Database-backed API health endpoint at `/seo-stat/api/health`.
 - Subpath routing, a development proxy, and automatic deployment.
 

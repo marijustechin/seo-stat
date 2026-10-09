@@ -104,6 +104,39 @@ website, objectives, and optional competitor URLs.
   is required.
 - Archived projects cannot start analyses or apply suggestions; history is kept.
 
+## Content workflow (implemented, TASK-0007)
+
+The project Content section implements the first content workflow: suggest topics,
+select a topic, review/edit a brief, generate an article draft, and edit/review it.
+
+- Topic suggestions (up to five) are generated from the project's **saved**
+  settings (business context, audience, objectives, content language, tone);
+  unapplied analysis suggestions are never substituted. Prior analysis research
+  evidence may inform proposals with source attribution and retrieval dates.
+  Each topic records title, audience, objective, reader need, angle, call to
+  action, relevance, and information needed. No invented search volumes,
+  keyword difficulty, rankings, or traffic. Topics can be created manually,
+  edited, and dismissed; repeated generation avoids obvious duplicates.
+- The brief is editable and prefilled from the topic and saved context (title,
+  angle, audience, business outcome, outline, call to action, destination URL,
+  sources, confirmations). Unknown operational details stay unknown. Generation
+  only starts on an explicit action.
+- Research uses the existing Firecrawl/direct-fetch coordinator with the same
+  bounds and URL/untrusted-content protections. Generated articles include
+  title, excerpt, Markdown body, slug, SEO title, meta description, call to
+  action, sources, and material claims requiring confirmation. SEO fields are
+  editable proposals validated against storage limits.
+- Drafts are versioned per topic; regeneration appends a new version and keeps
+  the previous one. Manual saving works without an AI call. Stale saves are
+  rejected (optimistic concurrency). "Ready for review" means available for
+  human review, not publication approval. Unresolved claims are shown before
+  marking ready.
+- Topic and article generations are asynchronous runs with the same pattern as
+  analyses (visible status, duplicate-start protection, interrupted handling,
+  sanitized errors, provider/model/usage, cost only with a price basis), shown
+  in Run history distinct from analyses. Archived projects keep content history
+  but reject new generation and editing.
+
 ## Review policy semantics
 
 - Manually requested public website research may execute without another

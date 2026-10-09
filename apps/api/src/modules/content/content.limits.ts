@@ -1,0 +1,22 @@
+/** Storage and generation limits for content topics, briefs, and drafts. */
+export const CONTENT_LIMITS = {
+  maxTopicsPerGeneration: 5,
+  title: 200,
+  audience: 500,
+  objective: 500,
+  readerNeed: 1000,
+  angle: 1000,
+  callToAction: 500,
+  relevance: 1000,
+  informationNeeded: 1000,
+  outline: 4000,
+  excerpt: 500,
+  seoTitle: 120,
+  metaDescription: 320,
+  slug: 120,
+  bodyMarkdown: 60000,
+  maxSources: 20,
+  maxUnresolvedClaims: 20,
+  maxOutputTokensTopics: 3000,
+  maxOutputTokensArticle: 6000,
+} as const;
