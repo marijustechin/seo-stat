@@ -109,34 +109,70 @@ and changing the DeepSeek text provider.
   Workers AI API token in the Cloudflare dashboard (Workers AI → Use REST API).
   The free plan's daily neuron allocation applies.
 
+## Cloudflare 401 diagnosis (follow-up)
+
+Diagnosed the configured token's 401 without exposing any secret and without
+rotating credentials.
+
+- **Configuration is clean and correctly loaded.** `/srv/seo-stat/config/api.env`
+  is mode 0600 with exactly one entry each for `CLOUDFLARE_API_TOKEN`,
+  `CLOUDFLARE_ACCOUNT_ID`, and `IMAGE_PROVIDER`; no CRLF, no surrounding
+  whitespace, no quotes, no `export` prefix, and no placeholder text; the account
+  id is 32 hex; the token value is 53 chars. The running API process's environment
+  **exactly matches** the file for all three (compared as hashes), so no restart
+  was needed and no `.env` file shadows the values.
+- **The token is valid and active**: `GET /client/v4/user/tokens/verify` →
+  HTTP 200, `status: "active"`. (The account-token verify endpoint returned 401,
+  which is expected for a user-owned token.)
+- **But the token is not authorized for the configured account's Workers AI**:
+  the model endpoint returned **HTTP 401, Cloudflare code `10000`
+  ("Authentication error")**; `GET /accounts/{account_id}` → 403 code `9109`
+  ("Invalid account identifier"); `GET /accounts/{account_id}/ai/models/search` →
+  403 code `10000`; `GET /accounts` → 200 but an **empty list** for this token;
+  `GET /user/tokens/{id}` → 403 `9109`.
+- **Root cause**: the credential itself is valid, but its **account scope /
+  Workers AI permission does not cover `CLOUDFLARE_ACCOUNT_ID`** — typically the
+  token was created in a different account (or the id is a zone/other id, or the
+  token lacks the Workers AI permission). This is **not** a code, parsing, or
+  duplicate-entry bug.
+
+### Code fix (deployed)
+
+- A provider credential/auth failure now returns an **unavailable-provider 503**
+  with the sanitized reason, instead of a misleading 400 that implied invalid user
+  input. `ImageProviderError` kinds: `quota`/`capacity` → 429; `invalid` → 400;
+  `auth`/`plan`/`timeout`/`network`/`other` → 503. E2e test added.
+
+### Remaining action (operator; no credential rotated here)
+
+- In the Cloudflare dashboard open the account that owns Workers AI, go to
+  **Workers AI → Use REST API**, and copy the **Account ID** shown there. Create
+  (or edit) a **Workers AI** API token **in that same account** with the Workers
+  AI permission. Set `CLOUDFLARE_ACCOUNT_ID` to that account id and
+  `CLOUDFLARE_API_TOKEN` to the token in `/srv/seo-stat/config/api.env`, then
+  restart `seo-stat-api.service`. The Workers Free plan's daily neuron allocation
+  applies.
+
 ## State
 
 - Implementation: complete
-- Verification: complete (automated + deployed structural checks). **Live
-  Cloudflare generation verification is pending** — the configured API token was
-  rejected (HTTP 401); no credential was acquired or replaced.
-- Commit: committed on `main` (`ac67c7b` feature; `72b708c` auth-classification
-  follow-up and live record)
-- Deployment: deployed automatically by the systemd user timer (`72b708c`; see
-  live note)
+- Verification: complete (automated + deployed structural checks + token
+  diagnosis). **Live Cloudflare generation verification is pending** — the token
+  is valid but not scoped/authorized for the configured account's Workers AI; no
+  credential was acquired or rotated.
+- Commit: committed on `main`
+- Deployment: deployed automatically by the systemd user timer (see live note)
 
 ## Live verification (deployed release)
 
-- Deployed `72b708c`; deploy log shows migration
-  `20261009110428_image_generation_parameters` applied; `prisma migrate status`
-  reports "Database schema is up to date" (7 migrations); health 200.
-- Server configuration (values never printed): `IMAGE_PROVIDER=cloudflare`,
-  `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are present. `system/status`
-  reports `image: { provider: "cloudflare", model:
-  "@cf/black-forest-labs/flux-1-schnell", configured: true, maxPromptLength: 2048,
-  parameters: { steps: 4 } }`.
-- Live **generation attempt** on an existing draft: Cloudflare was reached at the
-  documented endpoint and responded **HTTP 401 (authentication error)**. The API
-  returned 400 with a sanitized message; no request was made to OpenAI and no fall
-  back occurred. A **failed attempt row was retained** (kind generated, status
-  failed, provider `cloudflare`, model `flux-1-schnell`). The follow-up commit
-  classifies HTTP 401/403 as an explicit credential error.
-- Result: **live generation verification is pending** on a valid
-  `CLOUDFLARE_API_TOKEN` with Workers AI permissions (the token currently fails
-  authentication). The prior OpenAI attempt remains blocked by `429 no credits`
-  (TASK-0009); OpenAI is no longer selected.
+- Deployed; deploy log shows migration `20261009110428_image_generation_parameters`
+  applied; `prisma migrate status` reports "Database schema is up to date" (7
+  migrations); health 200. `system/status` reports `image: { provider:
+  "cloudflare", model: "@cf/black-forest-labs/flux-1-schnell", configured: true,
+  maxPromptLength: 2048, parameters: { steps: 4 } }`.
+- Generation via the API now returns **503** (provider unavailable) with the
+  sanitized Cloudflare auth reason, and retains a failed attempt row; no OpenAI
+  request/fallback occurs.
+- Result: **live generation pending** on a token scoped to `CLOUDFLARE_ACCOUNT_ID`
+  with Workers AI permission; see the remaining action above. The prior OpenAI
+  attempt remains blocked by `429 no credits` (TASK-0009); OpenAI is not selected.

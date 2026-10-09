@@ -216,14 +216,20 @@ export class ImageService {
       .trim()
       .slice(0, 300);
     if (error instanceof ImageProviderError) {
+      // Rate-limited vs temporarily over capacity are actionable 429s.
       if (error.kind === 'quota' || error.kind === 'capacity') {
         return { message, exception: new HttpException(message, 429) };
       }
-      if (error.kind === 'timeout' || error.kind === 'network') {
-        return { message, exception: new ServiceUnavailableException(message) };
+      // A malformed request that the provider rejects is the only client-shaped case.
+      if (error.kind === 'invalid') {
+        return { message, exception: new BadRequestException(message || 'Image generation is invalid.') };
       }
+      // Everything else (bad/insufficient credentials, paid-plan requirement,
+      // timeout, network, unknown provider failure) is a server-side provider
+      // failure, not invalid user input: report the provider as unavailable.
+      return { message, exception: new ServiceUnavailableException(message) };
     }
-    return { message, exception: new BadRequestException(message || 'Image generation failed.') };
+    return { message, exception: new ServiceUnavailableException(message || 'Image generation failed.') };
   }
 
   private async nextVersion(draftId: string): Promise<number> {

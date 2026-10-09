@@ -16,7 +16,7 @@ import {
 } from '../src/modules/analysis/ai/ai-provider.js';
 import { AnalysisResearch } from '../src/modules/analysis/research/research.port.js';
 import { ContentRunner } from '../src/modules/content/content.runner.js';
-import { ImageProvider } from '../src/modules/content/image.provider.js';
+import { ImageProvider, ImageProviderError } from '../src/modules/content/image.provider.js';
 
 // A 1x1 PNG (valid signature + IHDR), used to exercise upload and generation paths.
 const PNG_1X1 =
@@ -100,6 +100,8 @@ class StubImageProvider extends ImageProvider {
   /** Block inside generate until release() is called, to exercise the click guard. */
   hold = false;
   release: (() => void) | null = null;
+  /** Throw a server-side credential failure, to exercise the 503 mapping. */
+  authFailure = false;
 
   isConfigured(): boolean {
     return this.configured;
@@ -107,6 +109,9 @@ class StubImageProvider extends ImageProvider {
 
   async generate() {
     this.calls += 1;
+    if (this.authFailure) {
+      throw new ImageProviderError('auth', 'Cloudflare rejected the credentials (HTTP 401).');
+    }
     if (this.hold) {
       await new Promise<void>((resolve) => {
         this.release = resolve;
@@ -643,6 +648,28 @@ describe('Content (integration, mocked provider)', () => {
       prompt: 'A conceptual illustration',
     });
     expect(third.statusCode).toBe(201);
+    imageProvider.configured = false;
+  });
+
+  it('maps a server-side provider credential failure to an unavailable-provider 503, not a 400', async () => {
+    const projectId = await createProject('Content Auth Failure');
+    const draftId = await makeBareDraft(projectId);
+    imageProvider.configured = true;
+    imageProvider.authFailure = true;
+
+    const res = await call('POST', `/projects/${projectId}/content/drafts/${draftId}/images/generate`, {
+      prompt: 'A conceptual illustration',
+    });
+    expect(res.statusCode).toBe(503);
+    expect(String(res.json().message)).toMatch(/credential/i);
+
+    const images = (await call('GET', `/projects/${projectId}/content/drafts/${draftId}/images`)).json() as Array<{
+      status: string;
+    }>;
+    expect(images).toHaveLength(1);
+    expect(images[0]?.status).toBe('failed');
+
+    imageProvider.authFailure = false;
     imageProvider.configured = false;
   });
 });
