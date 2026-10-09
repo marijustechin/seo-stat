@@ -146,9 +146,22 @@ schedules, Google metrics, and a general workflow builder.
   configuration (`systemd-analyze calendar`, `list-timers` shows a next
   elapse); an observed reboot-persistence test was **not** performed (the shared
   server was not rebooted).
-- **B2B draft**: uses the existing brand/retailer surplus topic with a
-  commercially relevant brief; the resident-focused draft is preserved. (See
-  live notes below.)
+- **B2B draft**: used the existing brand/retailer topic (`188aaa1c…`) with a
+  commercially relevant brief (business outcome = the stated primary objective;
+  destination `https://textradeuk.co.uk/for-brands/`). Generation completed (run
+  `1e706d8d…`, 11254 in / 2247 out tokens, cost unavailable) and was saved as
+  draft `aa63950f…` (version 1, status `draft`): title "What Happens to Unsold,
+  Outdated and End-of-Season Clothing? A Responsible Brand Surplus Process",
+  slug `what-happens-to-unsold-outdated-end-of-season-clothing`, 7285 body
+  characters, 5 sources, 13 unresolved claims. The title, excerpt, SEO fields,
+  and call to action contain no unsupported absolute claims; 13 material claims
+  (including "zero landfill", "100% British-sourced", and certifications) are
+  listed for confirmation. The resident-focused draft (topic `bdb05d42…`) is
+  preserved unchanged.
+- **Timer fix verified by configuration**: `install-user-units.sh` installed the
+  corrected unit, `systemctl --user cat` shows `OnCalendar=*:0/3` with
+  `Persistent=true`, and `list-timers` shows a next elapse. An observed
+  reboot-persistence test was not performed (the shared server was not rebooted).
 
 ## State
 
