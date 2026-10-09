@@ -15,6 +15,8 @@ export interface SystemStatus {
     provider: string;
     model: string;
     configured: boolean;
+    maxPromptLength: number | null;
+    parameters: Record<string, unknown> | null;
   };
   integrations: {
     encryptionConfigured: boolean;

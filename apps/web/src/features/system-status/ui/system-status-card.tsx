@@ -66,15 +66,26 @@ export function SystemStatusCard() {
           <p>
             Provider: <strong>{state.status.image.provider}</strong> · model{' '}
             <strong>{state.status.image.model}</strong>
+            {state.status.image.parameters?.steps ? (
+              <> · steps <strong>{String(state.status.image.parameters.steps)}</strong></>
+            ) : null}
+            {state.status.image.maxPromptLength ? (
+              <> · prompt max <strong>{state.status.image.maxPromptLength}</strong></>
+            ) : null}
           </p>
           {state.status.image.configured ? (
             <p className="status-ok" role="status">
               Image generation is configured. Covers can be generated; uploads always work.
             </p>
+          ) : state.status.image.provider === 'none' ? (
+            <p role="status">
+              No image provider is selected. An administrator can enable one explicitly with
+              IMAGE_PROVIDER (for example, IMAGE_PROVIDER=cloudflare). Covers can still be uploaded.
+            </p>
           ) : (
             <p role="status">
-              Image generation is not configured, so covers can only be uploaded. An administrator can
-              set IMAGE_API_KEY on the server.
+              The selected image provider is not fully configured, so covers can only be uploaded. An
+              administrator can set its credentials on the server.
             </p>
           )}
 

@@ -1,10 +1,17 @@
-import { BadRequestException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  HttpException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { PrismaService } from '../../database/index.js';
-import type { Prisma } from '../../generated/prisma/client.js';
-import { imageDimensions } from './image-meta.js';
-import { ImageProvider } from './image.provider.js';
+import { Prisma } from '../../generated/prisma/client.js';
+import { detectImageMime, imageDimensions } from './image-meta.js';
+import { ImageProvider, ImageProviderError } from './image.provider.js';
 import type { ArticleImageView } from './image.types.js';
 import { GenerateImageDto, UpdateImageDto, UploadImageDto } from './dto/image.dto.js';
 
@@ -13,6 +20,9 @@ const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
 
 @Injectable()
 export class ImageService {
+  /** In-process guard against duplicate generation from repeated clicks. */
+  private readonly generating = new Set<string>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly provider: ImageProvider,
@@ -23,7 +33,13 @@ export class ImageService {
   }
 
   status() {
-    return { provider: this.provider.providerId, model: this.provider.model, configured: this.provider.isConfigured() };
+    return {
+      provider: this.provider.providerId,
+      model: this.provider.model,
+      configured: this.provider.isConfigured(),
+      maxPromptLength: this.provider.maxPromptLength,
+      parameters: this.provider.defaultParameters ?? null,
+    };
   }
 
   async list(projectId: string, draftId: string): Promise<ArticleImageView[]> {
@@ -46,12 +62,31 @@ export class ImageService {
     const prompt =
       dto.prompt?.trim() ||
       `An editorial illustration for an article titled "${draft.title ?? 'Untitled'}". Conceptual, non-photographic; do not depict real people, customers, facilities, or logos.`;
+    const limit = this.provider.maxPromptLength;
+    if (limit !== null && prompt.length > limit) {
+      throw new BadRequestException(
+        `The complete cover prompt is ${prompt.length} characters; ${this.provider.providerId} accepts at most ${limit}. Shorten it by ${prompt.length - limit} character(s) and try again.`,
+      );
+    }
+    if (this.generating.has(draftId)) {
+      throw new ConflictException('Cover generation is already in progress for this draft.');
+    }
+    this.generating.add(draftId);
+
     const version = await this.nextVersion(draftId);
     try {
       const result = await this.provider.generate({ prompt });
       const buffer = Buffer.from(result.base64, 'base64');
-      const dims = imageDimensions(buffer, result.mimeType);
-      const storagePath = await this.writeAsset(`${draftId}-v${version}`, EXTENSION[result.mimeType] ?? 'png', buffer);
+      if (buffer.length === 0) {
+        throw new ImageProviderError('invalid', 'The provider returned an empty image.');
+      }
+      const mimeType = detectImageMime(buffer);
+      if (!mimeType) {
+        throw new ImageProviderError('invalid', 'The provider returned an image in an unsupported format.');
+      }
+      const extension = EXTENSION[mimeType] ?? 'png';
+      const dims = imageDimensions(buffer, mimeType);
+      const storagePath = await this.writeAsset(`${draftId}-v${version}`, extension, buffer);
       const image = await this.prisma.articleImage.create({
         data: {
           projectId,
@@ -63,17 +98,19 @@ export class ImageService {
           altText: dto.altText?.slice(0, 500) ?? null,
           provider: this.provider.providerId,
           model: this.provider.model,
-          fileName: `cover-v${version}.png`,
-          mimeType: result.mimeType,
+          fileName: `cover-v${version}.${extension}`,
+          mimeType,
           width: dims?.width ?? null,
           height: dims?.height ?? null,
           bytes: buffer.length,
           storagePath,
-          usage: result.usage as Prisma.InputJsonValue,
+          usage: this.jsonOrNull(result.usage),
+          parameters: this.jsonOrNull(result.parameters),
         },
       });
       return this.toView(image);
     } catch (error) {
+      const failure = this.classifyFailure(error);
       await this.prisma.articleImage.create({
         data: {
           projectId,
@@ -84,10 +121,13 @@ export class ImageService {
           prompt,
           provider: this.provider.providerId,
           model: this.provider.model,
-          error: error instanceof Error ? error.message.replace(/\s+/g, ' ').slice(0, 300) : 'Image generation failed.',
+          parameters: this.jsonOrNull(this.provider.defaultParameters ?? null),
+          error: failure.message,
         },
       });
-      throw new BadRequestException('Image generation failed. See the image status for details.');
+      throw failure.exception;
+    } finally {
+      this.generating.delete(draftId);
     }
   }
 
@@ -126,11 +166,17 @@ export class ImageService {
     const project = await this.requireProject(projectId);
     this.assertActive(project);
     await this.requireImage(projectId, imageId);
+    const limit = this.provider.maxPromptLength;
+    if (dto.prompt !== undefined && limit !== null && dto.prompt.length > limit) {
+      throw new BadRequestException(
+        `The cover prompt is ${dto.prompt.length} characters; ${this.provider.providerId} accepts at most ${limit}.`,
+      );
+    }
     const image = await this.prisma.articleImage.update({
       where: { id: imageId },
       data: {
         ...(dto.altText !== undefined ? { altText: dto.altText.slice(0, 500) } : {}),
-        ...(dto.prompt !== undefined ? { prompt: dto.prompt.slice(0, 2000) } : {}),
+        ...(dto.prompt !== undefined ? { prompt: dto.prompt } : {}),
       },
     });
     return this.toView(image);
@@ -158,6 +204,26 @@ export class ImageService {
       mimeType: image.mimeType ?? 'application/octet-stream',
       fileName: basename(image.fileName ?? safe),
     };
+  }
+
+  private jsonOrNull(value: unknown): Prisma.InputJsonValue | typeof Prisma.DbNull {
+    return value === null || value === undefined ? Prisma.DbNull : (value as Prisma.InputJsonValue);
+  }
+
+  private classifyFailure(error: unknown): { message: string; exception: HttpException } {
+    const message = (error instanceof Error ? error.message : 'Image generation failed.')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 300);
+    if (error instanceof ImageProviderError) {
+      if (error.kind === 'quota' || error.kind === 'capacity') {
+        return { message, exception: new HttpException(message, 429) };
+      }
+      if (error.kind === 'timeout' || error.kind === 'network') {
+        return { message, exception: new ServiceUnavailableException(message) };
+      }
+    }
+    return { message, exception: new BadRequestException(message || 'Image generation failed.') };
   }
 
   private async nextVersion(draftId: string): Promise<number> {
@@ -213,6 +279,7 @@ export class ImageService {
     height: number | null;
     bytes: number | null;
     usage: unknown;
+    parameters: unknown;
     selected: boolean;
     error: string | null;
     createdAt: Date;
@@ -235,6 +302,7 @@ export class ImageService {
       height: image.height,
       bytes: image.bytes,
       usage: image.usage ?? null,
+      parameters: image.parameters ?? null,
       selected: image.selected,
       error: image.error,
       url: `/projects/${image.projectId}/content/images/${image.id}/file`,

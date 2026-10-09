@@ -21,6 +21,8 @@ import { ImageProvider } from '../src/modules/content/image.provider.js';
 // A 1x1 PNG (valid signature + IHDR), used to exercise upload and generation paths.
 const PNG_1X1 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+// JPEG signature bytes, to prove the stored format follows the bytes, not a hint.
+const JPEG_BASE64 = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00]).toString('base64');
 
 function topicSuggestion(index: number) {
   return {
@@ -90,8 +92,14 @@ class StubResearch extends AnalysisResearch {
 class StubImageProvider extends ImageProvider {
   readonly providerId = 'stub-image';
   readonly model = 'stub-image-model';
+  readonly maxPromptLength = 2048;
   configured = false;
   calls = 0;
+  /** Return JPEG bytes while (incorrectly) hinting PNG, to exercise detection. */
+  jpeg = false;
+  /** Block inside generate until release() is called, to exercise the click guard. */
+  hold = false;
+  release: (() => void) | null = null;
 
   isConfigured(): boolean {
     return this.configured;
@@ -99,7 +107,14 @@ class StubImageProvider extends ImageProvider {
 
   async generate() {
     this.calls += 1;
-    return { base64: PNG_1X1, mimeType: 'image/png', usage: { stub: true } };
+    if (this.hold) {
+      await new Promise<void>((resolve) => {
+        this.release = resolve;
+      });
+    }
+    return this.jpeg
+      ? { base64: JPEG_BASE64, mimeType: 'image/png', usage: null, parameters: { steps: 4 } }
+      : { base64: PNG_1X1, mimeType: 'image/png', usage: { stub: true }, parameters: { steps: 4 } };
   }
 }
 
@@ -560,5 +575,74 @@ describe('Content (integration, mocked provider)', () => {
         mimeType: 'image/png',
       })).statusCode,
     ).toBe(400);
+  });
+
+  const makeBareDraft = async (projectId: string): Promise<string> => {
+    const topic = await prisma.contentTopic.create({
+      data: { projectId, title: 'Image prompt topic', audience: 'A', objective: 'O', angle: 'Angle' },
+    });
+    const draft = await prisma.articleDraft.create({
+      data: { projectId, topicId: topic.id, bodyMarkdown: '# Body' },
+    });
+    return draft.id;
+  };
+
+  it('rejects an over-length prompt with actionable feedback and records no attempt', async () => {
+    const projectId = await createProject('Content Prompt Limit');
+    const draftId = await makeBareDraft(projectId);
+    imageProvider.configured = true;
+    const before = imageProvider.calls;
+
+    const res = await call('POST', `/projects/${projectId}/content/drafts/${draftId}/images/generate`, {
+      prompt: 'a'.repeat(3000),
+    });
+    expect(res.statusCode).toBe(400);
+    expect(String(res.json().message)).toMatch(/2048/);
+    expect(imageProvider.calls).toBe(before);
+    expect((await call('GET', `/projects/${projectId}/content/drafts/${draftId}/images`)).json()).toHaveLength(0);
+    imageProvider.configured = false;
+  });
+
+  it('stores the detected format (JPEG bytes), not the provider hint', async () => {
+    const projectId = await createProject('Content Format Detection');
+    const draftId = await makeBareDraft(projectId);
+    imageProvider.configured = true;
+    imageProvider.jpeg = true;
+
+    const res = await call('POST', `/projects/${projectId}/content/drafts/${draftId}/images/generate`, {
+      prompt: 'A conceptual illustration',
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().mimeType).toBe('image/jpeg');
+    expect(res.json().fileName).toBe('cover-v1.jpg');
+    imageProvider.jpeg = false;
+    imageProvider.configured = false;
+  });
+
+  it('prevents duplicate cover generation from repeated clicks', async () => {
+    const projectId = await createProject('Content Duplicate Generation');
+    const draftId = await makeBareDraft(projectId);
+    imageProvider.configured = true;
+    imageProvider.hold = true;
+
+    const first = call('POST', `/projects/${projectId}/content/drafts/${draftId}/images/generate`, {
+      prompt: 'A conceptual illustration',
+    });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const second = await call('POST', `/projects/${projectId}/content/drafts/${draftId}/images/generate`, {
+      prompt: 'A conceptual illustration',
+    });
+    expect(second.statusCode).toBe(409);
+
+    imageProvider.hold = false;
+    imageProvider.release?.();
+    expect((await first).statusCode).toBe(201);
+
+    // After completion the guard clears and generation works again.
+    const third = await call('POST', `/projects/${projectId}/content/drafts/${draftId}/images/generate`, {
+      prompt: 'A conceptual illustration',
+    });
+    expect(third.statusCode).toBe(201);
+    imageProvider.configured = false;
   });
 });

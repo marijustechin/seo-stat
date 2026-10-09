@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { generateImage, listImages, selectImage, updateImage, uploadImage } from '@/entities/content/api';
 import type { ArticleImage } from '@/entities/content/model';
+import { getSystemStatus, type SystemStatus } from '@/entities/system/api';
 import { ApiError } from '@/shared/api/client';
 import { apiUrl } from '@/shared/config/app';
 
@@ -11,9 +12,10 @@ const ALLOWED = ['image/png', 'image/jpeg', 'image/webp'];
 
 function explain(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
-    if (err.status === 503) return 'Image generation is not configured on the server.';
     if (err.status === 413) return 'The image is larger than the allowed size.';
-    if (err.status === 400) return err.message;
+    // 400 (validation), 409 (duplicate), 429 (quota/capacity), 503 (not configured/timeout)
+    // carry actionable server messages.
+    if ([400, 409, 429, 503].includes(err.status)) return err.message || fallback;
   }
   return err instanceof Error ? err.message : fallback;
 }
@@ -33,6 +35,7 @@ export function CoverImage({ projectId, draftId }: { projectId: string; draftId:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [status, setStatus] = useState<SystemStatus | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async () => {
@@ -48,6 +51,21 @@ export function CoverImage({ projectId, draftId }: { projectId: string; draftId:
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const next = await getSystemStatus();
+        if (active) setStatus(next);
+      } catch {
+        // The provider status is best-effort; generation errors still surface.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const generate = async () => {
     setBusy(true);
@@ -112,6 +130,19 @@ export function CoverImage({ projectId, draftId }: { projectId: string; draftId:
         A generated image is a draft visual, not an editorially verified asset. Only the selected image is
         published. Previous images are preserved when you regenerate.
       </p>
+      {status && (
+        <p className="muted">
+          Provider: <strong>{status.image.provider}</strong> · model <strong>{status.image.model}</strong>
+          {status.image.parameters?.steps ? ` · ${String(status.image.parameters.steps)} steps` : ''}
+          {status.image.maxPromptLength ? ` · prompt max ${status.image.maxPromptLength}` : ''}
+          {!status.image.configured ? ' · not configured (covers can only be uploaded)' : ''}
+        </p>
+      )}
+      {busy && (
+        <p role="status" className="muted">
+          Generating a cover with {status?.image.provider ?? 'the image provider'}…
+        </p>
+      )}
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -140,7 +171,12 @@ export function CoverImage({ projectId, draftId }: { projectId: string; draftId:
         <input id="cover-alt" className="input" value={altText} onChange={(e) => setAltText(e.target.value)} />
       </div>
       <div className="form-actions">
-        <button type="button" className="button cursor-pointer" onClick={generate} disabled={busy}>
+        <button
+          type="button"
+          className="button cursor-pointer"
+          onClick={generate}
+          disabled={busy || (status !== null && !status.image.configured)}
+        >
           {busy ? 'Working…' : 'Generate cover image'}
         </button>
         <button
@@ -207,6 +243,8 @@ function ImageRow({
   const [alt, setAlt] = useState(image.altText ?? '');
   const [working, setWorking] = useState(false);
   const usage = usageSummary(image.usage);
+  const parameters = image.parameters as { steps?: number } | null;
+  const steps = parameters && typeof parameters.steps === 'number' ? parameters.steps : null;
 
   const run = async (action: () => Promise<unknown>, fallback: string, done?: string) => {
     setWorking(true);
@@ -237,7 +275,8 @@ function ImageRow({
         {image.provider ? `${image.provider}${image.model ? ` / ${image.model}` : ''}` : 'uploaded'}
         {image.width && image.height ? ` · ${image.width}×${image.height}` : ''}
         {image.bytes ? ` · ${Math.round(image.bytes / 1024)} KB` : ''}
-        {usage ? ` · usage ${usage}` : ''}
+        {steps !== null ? ` · ${steps} steps` : ''}
+        {image.kind === 'generated' ? (usage ? ` · usage ${usage}` : ' · usage not reported') : ''}
       </p>
       {image.error && <p className="status-error">{image.error}</p>}
       {image.kind === 'generated' && (

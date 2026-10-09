@@ -4,7 +4,7 @@ import { ContentController } from './content.controller.js';
 import { ContentRunner } from './content.runner.js';
 import { ContentService } from './content.service.js';
 import { ImageProvider } from './image.provider.js';
-import { OpenAiImageProvider } from './image.openai.provider.js';
+import { createImageProvider } from './image.providers.js';
 import { ImageService } from './image.service.js';
 
 @Module({
@@ -14,7 +14,7 @@ import { ImageService } from './image.service.js';
     ContentService,
     ContentRunner,
     ImageService,
-    { provide: ImageProvider, useClass: OpenAiImageProvider },
+    { provide: ImageProvider, useFactory: () => createImageProvider() },
   ],
   exports: [ContentService, ImageService, ImageProvider],
 })

@@ -3,6 +3,30 @@ export interface ImageDimensions {
   height: number;
 }
 
+export type ImageMimeType = 'image/png' | 'image/jpeg' | 'image/webp';
+
+/**
+ * Detect the actual format from the file signature. Providers may return JPEG
+ * bytes even when a caller assumed PNG, so the stored extension/MIME must follow
+ * the bytes, not an assumption.
+ */
+export function detectImageMime(buffer: Buffer): ImageMimeType | null {
+  if (buffer.length >= 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+    return 'image/png';
+  }
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  if (
+    buffer.length >= 12 &&
+    buffer.toString('ascii', 0, 4) === 'RIFF' &&
+    buffer.toString('ascii', 8, 12) === 'WEBP'
+  ) {
+    return 'image/webp';
+  }
+  return null;
+}
+
 function png(buffer: Buffer): ImageDimensions | null {
   if (buffer.length < 24 || buffer.toString('ascii', 1, 4) !== 'PNG') return null;
   return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };

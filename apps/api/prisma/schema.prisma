@@ -248,6 +248,7 @@ model ArticleImage {
   bytes       Int?
   storagePath String?       @map("storage_path")
   usage       Json?
+  parameters  Json?
   selected    Boolean       @default(false)
   error       String?
   createdAt   DateTime      @default(now()) @map("created_at")

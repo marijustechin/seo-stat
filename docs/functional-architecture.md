@@ -191,15 +191,24 @@ select a topic, review/edit a brief, generate an article draft, and edit/review 
   visual, not an editorially verified asset. Image generation is a separate
   capability with its own credential: when unconfigured, the API returns 503, the
   UI shows an unavailable state, and uploads still work. The System page reports
-  the image provider configuration separately.
-- Provider: OpenAI Images, `POST /v1/images/generations`, default model
-  `gpt-image-2.5-flare` (`gpt-image-2.5-sunburst` is the precision-editing
-  alternative), response `b64_json` (PNG bytes), default size `1536x1024`
-  (landscape; recommended standard sizes are `1024x1024`, `1536x1024`,
-  `1024x1536`). Flare is the default because it targets fast, high-quality
-  everyday generation; Sunburst is preferred only when editing precision matters.
-  The provider is optional and uses a separate `IMAGE_API_KEY`; DeepSeek remains
-  the text provider.
+  the image provider, model, and configuration separately.
+- **Provider selection is explicit** (`IMAGE_PROVIDER`). The selected provider for
+  SEO-STAT is **Cloudflare Workers AI** with `@cf/black-forest-labs/flux-1-schnell`
+  (the Workers **Free** plan): `POST .../accounts/{accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`
+  with Bearer auth and the documented `prompt` (max 2048 chars) and `steps`
+  (1-8, default 4) parameters. The JSON envelope is validated, `result.image` is
+  decoded, and the **actual format/dimensions are detected from the bytes** (FLUX
+  returns JPEG, stored and served as JPEG). A stray `IMAGE_API_KEY` does not enable
+  OpenAI or cause a fallback; `IMAGE_PROVIDER=openai` is the only way to select
+  OpenAI, and DeepSeek remains the text provider.
+- The submitted prompt and generation parameters are recorded per attempt. Usage
+  is recorded only when the provider reports it; Cloudflare does not, so the UI
+  states "usage not reported" rather than inventing tokens, quota, or zero cost.
+  Cloudflare error codes are distinguished: `3036` (free daily allocation
+  exhausted) and `3040` (temporary capacity) are surfaced as clear 429 messages,
+  `5035` (paid-only) is reported without upgrading, and timeouts are separated;
+  quota exhaustion is not retried and never falls back to a paid provider. Failed
+  attempts are retained in the per-draft history.
 
 ## WordPress integration and article export (implemented, TASK-0010)
 

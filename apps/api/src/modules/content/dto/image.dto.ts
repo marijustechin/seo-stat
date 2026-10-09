@@ -1,9 +1,11 @@
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class GenerateImageDto {
+  // The provider-specific limit is enforced with actionable feedback in the
+  // service; this is only a generous hard upper bound.
   @IsOptional()
   @IsString()
-  @MaxLength(2000)
+  @MaxLength(4000)
   prompt?: string;
 
   @IsOptional()
@@ -37,7 +39,7 @@ export class UpdateImageDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(2000)
+  @MaxLength(4000)
   prompt?: string;
 }
 

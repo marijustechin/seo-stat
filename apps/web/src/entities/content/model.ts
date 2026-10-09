@@ -39,6 +39,7 @@ export interface ArticleImage {
   height: number | null;
   bytes: number | null;
   usage: unknown;
+  parameters: unknown;
   selected: boolean;
   error: string | null;
   url: string;

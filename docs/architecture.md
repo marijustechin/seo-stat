@@ -39,8 +39,9 @@ architecture.
     provider behind an interface (`ai/`, DeepSeek via the OpenAI-compatible SDK).
   - `src/modules/content` - project content workflow: topics, briefs (with
     information-requirement answers), reusable project knowledge, versioned
-    drafts, article cover images (upload/generation with a separate provider),
-    and their asynchronous generation runs.
+    drafts, article cover images (upload/generation behind an explicitly selected
+    provider: Cloudflare Workers AI FLUX or OpenAI Images), and their
+    asynchronous generation runs.
   - `src/modules/integrations` - project-scoped external integrations: the
     WordPress connection (encrypted credentials, connection test) and explicit
     article-draft export to a WordPress draft with reliable external-action

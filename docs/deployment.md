@@ -113,29 +113,42 @@ never committed and never printed.
   `docs/functional-architecture.md` and enforced in code. The credential is set
   by the administrator/operator; the bootstrap script does not create it.
 
-## Article cover-image provider (optional)
+## Image generation provider (explicit selection)
 
 - Cover-image generation is a **separate capability and credential** from the
-  text provider; it is not required and does not use `DEEPSEEK_API_KEY`. It uses
-  the OpenAI Images API: endpoint `POST https://api.openai.com/v1/images/generations`,
-  default model `gpt-image-2.5-flare`, response `data[0].b64_json` (PNG bytes).
-  Recommended standard sizes are `1024x1024` (square), `1536x1024` (landscape,
-  the application default), and `1024x1536` (portrait); custom `WIDTHxHEIGHT`
-  sizes must be multiples of 16 with an aspect ratio between 1:3 and 3:1 and no
-  edge above 3840 px. Flare is chosen as the default for fast, high-quality
-  everyday cover generation; `gpt-image-2.5-sunburst` is the precision-editing
-  alternative if a project needs it.
-- Configure server-side only in `/srv/seo-stat/config/api.env` (mode 0600):
-  `IMAGE_API_KEY` (or `OPENAI_IMAGE_API_KEY`) and optional `IMAGE_MODEL`
-  (default `gpt-image-2.5-flare`) and `IMAGE_BASE_URL` (default
-  `https://api.openai.com/v1`). Restart the API user service after changing them.
-  The key is read only by the API process; it is never sent to the browser, an
-  API response, a log line, the repository, or the release artifact. Do not
-  acquire or reuse an OpenAI credential without the operator's authorization.
-- When no image key is set, generation returns 503 and the System page shows the
-  image provider as not configured; **uploading** a cover always works without
-  any credential. Live image-generation verification therefore stays **pending**
-  until an operator configures a key.
+  text provider (DeepSeek). Selection is **explicit**: only
+  `IMAGE_PROVIDER=cloudflare` or `IMAGE_PROVIDER=openai` enable generation. Any
+  other value (including unset) disables generation. A stray `IMAGE_API_KEY` does
+  **not** enable or fall back to OpenAI. DeepSeek remains the text provider.
+- **Cloudflare Workers AI (the free-plan option, selected for SEO-STAT)**: model
+  `@cf/black-forest-labs/flux-1-schnell`, called directly from the API with
+  `POST https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`
+  and `Authorization: Bearer <token>`. The body uses the documented `prompt`
+  (max 2048 characters) and `steps` parameters (1-8, default 4). The JSON
+  envelope is validated (`success`, `errors`), `result.image` is decoded from
+  base64, and the actual file format/dimensions are detected from the bytes
+  (FLUX returns JPEG, so files are stored/served as JPEG, not mislabelled PNG).
+  Configure in `/srv/seo-stat/config/api.env` (mode 0600):
+  `IMAGE_PROVIDER=cloudflare`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`,
+  and optional `IMAGE_STEPS` (default 4). The Workers **Free** plan is used; no
+  paid billing, credits, or paid models are activated.
+- Cloudflare response/error codes are distinguished: `3036` (HTTP 429, free daily
+  allocation exhausted) and `3040` (HTTP 429, temporary capacity) are surfaced as
+  clear 429 messages; `5035` (paid-only model) is reported without upgrading;
+  `3007`/`3008` are timeouts. Quota exhaustion is **not retried** and never falls
+  back to a paid provider. Failed attempts are retained in per-draft history.
+- **OpenAI Images (alternative, only when `IMAGE_PROVIDER=openai`)**: endpoint
+  `POST https://api.openai.com/v1/images/generations`, model
+  `gpt-image-2.5-flare` (`gpt-image-2.5-sunburst` for precision editing),
+  response `data[0].b64_json`; configured with `IMAGE_API_KEY` (or
+  `OPENAI_IMAGE_API_KEY`), `IMAGE_MODEL`, `IMAGE_BASE_URL`. Do not acquire or
+  reuse an OpenAI credential without the operator's authorization.
+- Credentials are read only by the API process; they are never sent to the
+  browser, an API response, a log line, the repository, or the release artifact.
+  Restart the API user service after changing them.
+- When no provider is selected or configured, generation returns 503 and the
+  System page shows the provider and configuration state; **uploading** a cover
+  always works without any credential.
 - Generated/uploaded image files are written to `CONTENT_ASSET_DIR` (default
   `/srv/seo-stat/data/content-images`), which is outside the release directory so
   assets survive deployments. The directory is created (recursively) on first use
