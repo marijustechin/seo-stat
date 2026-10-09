@@ -130,7 +130,10 @@ schedules, Google metrics, and a general workflow builder.
   objective **is present**. Project settings were not modified.
 - **Topic relevance**: topics now carry `objectiveAlignment` and `priority`
   (`primary`/`secondary`/`supporting`); the UI shows a "Primary objective" badge
-  and the alignment. Other audiences remain selectable.
+  and the alignment. Other audiences remain selectable. The existing TexTrade
+  topics were annotated with this metadata via explicit PATCH requests (content
+  metadata only; project settings untouched): the brand/retailer surplus topic is
+  `primary` and the others `secondary`/`supporting`.
 - **Unsupported headlines**: a claim guard neutralizes absolute claims ("zero
   landfill", "100%", "guaranteed", "certified", "carbon neutral", superlatives)
   in the title, excerpt, SEO fields, and call to action, and records them under
