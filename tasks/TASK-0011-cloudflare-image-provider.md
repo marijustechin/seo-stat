@@ -160,18 +160,23 @@ rotating credentials.
   diagnosis). **Live Cloudflare generation verification is pending** — the token
   is valid but not scoped/authorized for the configured account's Workers AI; no
   credential was acquired or rotated.
-- Commit: committed on `main`
-- Deployment: deployed automatically by the systemd user timer (see live note)
+- Commit: committed on `main` (`ac67c7b` feature; `72b708c` auth classification;
+  `27ec6b3` 401 diagnosis, 503 mapping, and record)
+- Deployment: deployed automatically by the systemd user timer (`27ec6b3`; see
+  live note)
 
 ## Live verification (deployed release)
 
-- Deployed; deploy log shows migration `20261009110428_image_generation_parameters`
-  applied; `prisma migrate status` reports "Database schema is up to date" (7
-  migrations); health 200. `system/status` reports `image: { provider:
-  "cloudflare", model: "@cf/black-forest-labs/flux-1-schnell", configured: true,
-  maxPromptLength: 2048, parameters: { steps: 4 } }`.
-- Generation via the API now returns **503** (provider unavailable) with the
-  sanitized Cloudflare auth reason, and retains a failed attempt row; no OpenAI
+- Deployed `27ec6b3`; deploy log shows migration
+  `20261009110428_image_generation_parameters` applied; `prisma migrate status`
+  reports "Database schema is up to date" (7 migrations); health 200.
+  `system/status` reports `image: { provider: "cloudflare", model:
+  "@cf/black-forest-labs/flux-1-schnell", configured: true, maxPromptLength: 2048,
+  parameters: { steps: 4 } }`.
+- Generation via the API now returns **503** with the sanitized reason
+  `Cloudflare rejected the credentials (HTTP 401): Authentication error. Check
+  CLOUDFLARE_API_TOKEN and its Workers AI permissions.`, and retains a failed
+  attempt row (history shows both the earlier and current failure); no OpenAI
   request/fallback occurs.
 - Result: **live generation pending** on a token scoped to `CLOUDFLARE_ACCOUNT_ID`
   with Workers AI permission; see the remaining action above. The prior OpenAI
