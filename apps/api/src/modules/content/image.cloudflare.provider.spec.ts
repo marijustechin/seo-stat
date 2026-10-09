@@ -94,6 +94,7 @@ describe('CloudflareImageProvider', () => {
     expect(classifyCloudflareError(3036, 429, '')).toMatchObject({ kind: 'quota' });
     expect(classifyCloudflareError(3040, 429, '')).toMatchObject({ kind: 'capacity' });
     expect(classifyCloudflareError(5035, 403, '')).toMatchObject({ kind: 'plan' });
+    expect(classifyCloudflareError(null, 401, 'Authentication error')).toMatchObject({ kind: 'auth' });
     expect(classifyCloudflareError(3007, 408, '')).toMatchObject({ kind: 'timeout' });
     expect(classifyCloudflareError(5007, 400, 'no such model')).toMatchObject({ kind: 'invalid' });
     expect(classifyCloudflareError(null, 500, '')).toMatchObject({ kind: 'other' });

@@ -77,6 +77,13 @@ export function classifyCloudflareError(
       'This Cloudflare model requires a Workers Paid plan; the free plan cannot use it. No paid upgrade was attempted.',
     );
   }
+  if (httpStatus === 401 || httpStatus === 403) {
+    const detail = sanitize(message);
+    return new ImageProviderError(
+      'auth',
+      `Cloudflare rejected the credentials (HTTP ${httpStatus})${detail ? `: ${detail}` : ''}. Check CLOUDFLARE_API_TOKEN and its Workers AI permissions.`,
+    );
+  }
   if (code === 3007 || code === 3008) {
     return new ImageProviderError('timeout', 'Cloudflare Workers AI timed out. Try again.');
   }

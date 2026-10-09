@@ -112,17 +112,29 @@ and changing the DeepSeek text provider.
 ## State
 
 - Implementation: complete
-- Verification: complete (automated + structural). **Live Cloudflare
-  generation verification is pending** — no Cloudflare credentials were available
-  and none were acquired.
+- Verification: complete (automated + deployed structural checks). **Live
+  Cloudflare generation verification is pending** — the configured API token was
+  rejected (HTTP 401); no credential was acquired or replaced.
 - Commit: committed on `main`
 - Deployment: deployed automatically by the systemd user timer (see live note)
 
-## Live verification
+## Live verification (deployed release)
 
-- Cloudflare: **pending** (no `CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN`).
-  When available: generate a cover, inspect quality, regenerate with an edited
-  prompt, confirm both versions persist, select a cover, reload, and verify the
-  served image/metadata and recorded parameters/usage.
-- The prior OpenAI attempt remains blocked by `429 no credits` (TASK-0009); the
-  OpenAI provider is no longer selected.
+- Deployed `ac67c7b` (auth-classification follow-up below); deploy log shows
+  migration `20261009110428_image_generation_parameters` applied; `prisma migrate
+  status` reports "Database schema is up to date" (7 migrations); health 200.
+- Server configuration (values never printed): `IMAGE_PROVIDER=cloudflare`,
+  `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are present. `system/status`
+  reports `image: { provider: "cloudflare", model:
+  "@cf/black-forest-labs/flux-1-schnell", configured: true, maxPromptLength: 2048,
+  parameters: { steps: 4 } }`.
+- Live **generation attempt** on an existing draft: Cloudflare was reached at the
+  documented endpoint and responded **HTTP 401 (authentication error)**. The API
+  returned 400 with a sanitized message; no request was made to OpenAI and no fall
+  back occurred. A **failed attempt row was retained** (kind generated, status
+  failed, provider `cloudflare`, model `flux-1-schnell`). The follow-up commit
+  classifies HTTP 401/403 as an explicit credential error.
+- Result: **live generation verification is pending** on a valid
+  `CLOUDFLARE_API_TOKEN` with Workers AI permissions (the token currently fails
+  authentication). The prior OpenAI attempt remains blocked by `429 no credits`
+  (TASK-0009); OpenAI is no longer selected.
