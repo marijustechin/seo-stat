@@ -8,6 +8,9 @@ allowBuilds:
   '@prisma/engines': true
   prisma: true
   unrs-resolver: true
+  # Published packages ship prebuilt output; their install scripts are not run.
+  '@google/genai': false
+  protobufjs: false
 
 minimumReleaseAgeExclude:
   - openai@7.30.1

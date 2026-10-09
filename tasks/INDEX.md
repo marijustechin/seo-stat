@@ -13,3 +13,4 @@
 | [TASK-0009](TASK-0009-article-cover-images.md) | Article cover images (generate or upload) | completed |
 | [TASK-0010](TASK-0010-wordpress-integration-export.md) | Project-scoped WordPress integration and article export | completed |
 | [TASK-0011](TASK-0011-cloudflare-image-provider.md) | Cloudflare Workers AI cover generation (FLUX.1 Schnell) | completed |
+| [TASK-0012](TASK-0012-gemini-image-provider.md) | Google Gemini image provider and responsive cover previews | completed |

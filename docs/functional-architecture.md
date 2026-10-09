@@ -192,15 +192,15 @@ select a topic, review/edit a brief, generate an article draft, and edit/review 
   capability with its own credential: when unconfigured, the API returns 503, the
   UI shows an unavailable state, and uploads still work. The System page reports
   the image provider, model, and configuration separately.
-- **Provider selection is explicit** (`IMAGE_PROVIDER`). The selected provider for
-  SEO-STAT is **Cloudflare Workers AI** with `@cf/black-forest-labs/flux-1-schnell`
-  (the Workers **Free** plan): `POST .../accounts/{accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`
-  with Bearer auth and the documented `prompt` (max 2048 chars) and `steps`
-  (1-8, default 4) parameters. The JSON envelope is validated, `result.image` is
-  decoded, and the **actual format/dimensions are detected from the bytes** (FLUX
-  returns JPEG, stored and served as JPEG). A stray `IMAGE_API_KEY` does not enable
-  OpenAI or cause a fallback; `IMAGE_PROVIDER=openai` is the only way to select
-  OpenAI, and DeepSeek remains the text provider.
+- **Provider selection is explicit** (`IMAGE_PROVIDER`) with **no automatic
+  fallback**: `cloudflare` (Workers AI `@cf/black-forest-labs/flux-1-schnell`,
+  `prompt` max 2048 + `steps` 1-8 default 4) or `gemini` (official `@google/genai`
+  SDK, model `gemini-3.1-flash-image`, landscape `16:9`) or `openai`. In every
+  case the provider's envelope/`inlineData` is decoded and the **actual
+  format/dimensions are detected from the bytes**. A stray `IMAGE_API_KEY` does
+  not enable OpenAI or cause a fallback, and DeepSeek remains the text provider.
+  The default prompt uses the article's saved title and summary with instructions
+  to avoid embedded text, logos, real people, and unsupported claims.
 - The submitted prompt and generation parameters are recorded per attempt. Usage
   is recorded only when the provider reports it; Cloudflare does not, so the UI
   states "usage not reported" rather than inventing tokens, quota, or zero cost.

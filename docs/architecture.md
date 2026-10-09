@@ -40,8 +40,9 @@ architecture.
   - `src/modules/content` - project content workflow: topics, briefs (with
     information-requirement answers), reusable project knowledge, versioned
     drafts, article cover images (upload/generation behind an explicitly selected
-    provider: Cloudflare Workers AI FLUX or OpenAI Images), and their
-    asynchronous generation runs.
+    provider with no fallback: Cloudflare Workers AI FLUX, Google Gemini via the
+    official `@google/genai` SDK, or OpenAI Images), and their asynchronous
+    generation runs.
   - `src/modules/integrations` - project-scoped external integrations: the
     WordPress connection (encrypted credentials, connection test) and explicit
     article-draft export to a WordPress draft with reliable external-action

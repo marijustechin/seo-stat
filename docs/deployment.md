@@ -117,9 +117,20 @@ never committed and never printed.
 
 - Cover-image generation is a **separate capability and credential** from the
   text provider (DeepSeek). Selection is **explicit**: only
-  `IMAGE_PROVIDER=cloudflare` or `IMAGE_PROVIDER=openai` enable generation. Any
-  other value (including unset) disables generation. A stray `IMAGE_API_KEY` does
-  **not** enable or fall back to OpenAI. DeepSeek remains the text provider.
+  `IMAGE_PROVIDER=cloudflare`, `IMAGE_PROVIDER=gemini`, or
+  `IMAGE_PROVIDER=openai` enable generation. Any other value (including unset)
+  disables generation. There is **no automatic fallback** between providers, and
+  a stray `IMAGE_API_KEY` does **not** enable or fall back to OpenAI. DeepSeek
+  remains the text provider.
+- **Google Gemini (official `@google/genai` SDK)**: model
+  `gemini-3.1-flash-image` (configurable with `GEMINI_IMAGE_MODEL`), landscape
+  `16:9` covers suitable for article headers. Configure in
+  `/srv/seo-stat/config/api.env` (mode 0600): `IMAGE_PROVIDER=gemini`,
+  `GEMINI_API_KEY`, `GEMINI_IMAGE_MODEL=gemini-3.1-flash-image`. The SDK sends the
+  key as the `x-goog-api-key` header (never in a URL); the default prompt uses the
+  article's saved title and summary with instructions to avoid embedded text,
+  logos, real people, and unsupported claims. The image arrives as base64
+  `inlineData` and its actual format is detected from the bytes.
 - **Cloudflare Workers AI (the free-plan option, selected for SEO-STAT)**: model
   `@cf/black-forest-labs/flux-1-schnell`, called directly from the API with
   `POST https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`

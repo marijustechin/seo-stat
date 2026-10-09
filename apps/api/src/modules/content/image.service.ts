@@ -59,9 +59,18 @@ export class ImageService {
     if (!this.provider.isConfigured()) {
       throw new ServiceUnavailableException('Image generation is not configured on the server.');
     }
+    const summary = draft.excerpt?.trim();
     const prompt =
       dto.prompt?.trim() ||
-      `An editorial illustration for an article titled "${draft.title ?? 'Untitled'}". Conceptual, non-photographic; do not depict real people, customers, facilities, or logos.`;
+      [
+        `Create a landscape editorial cover illustration for an article titled "${draft.title ?? 'Untitled'}".`,
+        summary ? `Article summary: ${summary}` : '',
+        'Style: conceptual and non-photographic, clean and modern, suitable as a blog header.',
+        'Do not include any text, words, letters, numbers, captions, logos, or watermarks in the image.',
+        'Do not depict real people, identifiable customers, facilities, or brand logos, and do not include statistics or unsupported claims.',
+      ]
+        .filter(Boolean)
+        .join(' ');
     const limit = this.provider.maxPromptLength;
     if (limit !== null && prompt.length > limit) {
       throw new BadRequestException(

@@ -458,6 +458,24 @@ a {
   padding-top: 1rem;
 }
 
+/* Cover previews are responsive: full card width on small screens, never
+   overflowing, with a stable aspect box so layout does not jump. */
+.cover-preview {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  margin: 0.5rem 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  object-fit: contain;
+}
+
+figure {
+  margin: 0.5rem 0;
+}
+
 .markdown-preview {
   border: 1px solid var(--border);
   border-radius: 8px;

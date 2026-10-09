@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CloudflareImageProvider } from './image.cloudflare.provider.js';
 import { DisabledImageProvider } from './image.disabled.provider.js';
+import { GeminiImageProvider } from './image.gemini.provider.js';
 import { OpenAiImageProvider } from './image.openai.provider.js';
 import { createImageProvider } from './image.providers.js';
 
@@ -32,6 +33,25 @@ describe('image provider selection', () => {
     const selected = createImageProvider({ IMAGE_PROVIDER: 'cloudflare' } as NodeJS.ProcessEnv);
     expect(selected).toBeInstanceOf(CloudflareImageProvider);
     expect(selected.isConfigured()).toBe(false);
+  });
+
+  it('selects Gemini only when explicitly requested', () => {
+    const selected = createImageProvider({
+      IMAGE_PROVIDER: 'gemini',
+      GEMINI_API_KEY: 'test-key',
+      GEMINI_IMAGE_MODEL: 'gemini-3.1-flash-image',
+    } as NodeJS.ProcessEnv);
+    expect(selected).toBeInstanceOf(GeminiImageProvider);
+    expect(selected.providerId).toBe('gemini');
+    expect(selected.isConfigured()).toBe(true);
+    expect(selected.defaultParameters).toEqual({ aspectRatio: '16:9', model: 'gemini-3.1-flash-image' });
+  });
+
+  it('reports Gemini as unconfigured when the key is missing', () => {
+    const selected = createImageProvider({ IMAGE_PROVIDER: 'gemini' } as NodeJS.ProcessEnv);
+    expect(selected).toBeInstanceOf(GeminiImageProvider);
+    expect(selected.isConfigured()).toBe(false);
+    expect(selected.model).toBe('gemini-3.1-flash-image');
   });
 
   it('selects OpenAI only when explicitly requested', () => {

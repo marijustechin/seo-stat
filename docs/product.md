@@ -48,9 +48,9 @@ project management, system settings, and aggregate costs. See
   knowledge included in later drafts, and drafts generated from an earlier brief
   are flagged stale.
 - Article cover images per draft: generate from a visual brief with an explicitly
-  selected provider (Cloudflare Workers AI FLUX.1 [schnell] on the free plan, or
-  OpenAI Images) or upload; selected image, alt text, editable prompts,
-  versioned regeneration, and safe serving.
+  selected provider and no fallback (Cloudflare Workers AI FLUX.1 [schnell] on the
+  free plan, Google Gemini, or OpenAI Images) or upload; selected image, alt text,
+  editable prompts, versioned regeneration, responsive previews, and safe serving.
 - WordPress integration per project (site URL, username, encrypted Application
   Password, connection test) and an explicit "Send draft to WordPress" action
   that creates or updates a WordPress **draft** (never publishes), mapping title,
