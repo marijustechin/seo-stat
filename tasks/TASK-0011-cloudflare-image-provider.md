@@ -156,12 +156,10 @@ rotating credentials.
 ## State
 
 - Implementation: complete
-- Verification: complete (automated + deployed structural checks + token
-  diagnosis). **Live Cloudflare generation verification is pending** — the token
-  is valid but not scoped/authorized for the configured account's Workers AI; no
-  credential was acquired or rotated.
+- Verification: **complete**, including live Cloudflare cover generation (the
+  account-id correction resolved the scope mismatch; see live note).
 - Commit: committed on `main` (`ac67c7b` feature; `72b708c` auth classification;
-  `27ec6b3` 401 diagnosis, 503 mapping, and record)
+  `27ec6b3` 401 diagnosis and 503 mapping; plus this live-verification record)
 - Deployment: deployed automatically by the systemd user timer (`27ec6b3`; see
   live note)
 
@@ -173,11 +171,32 @@ rotating credentials.
   `system/status` reports `image: { provider: "cloudflare", model:
   "@cf/black-forest-labs/flux-1-schnell", configured: true, maxPromptLength: 2048,
   parameters: { steps: 4 } }`.
-- Generation via the API now returns **503** with the sanitized reason
-  `Cloudflare rejected the credentials (HTTP 401): Authentication error. Check
-  CLOUDFLARE_API_TOKEN and its Workers AI permissions.`, and retains a failed
-  attempt row (history shows both the earlier and current failure); no OpenAI
-  request/fallback occurs.
-- Result: **live generation pending** on a token scoped to `CLOUDFLARE_ACCOUNT_ID`
-  with Workers AI permission; see the remaining action above. The prior OpenAI
-  attempt remains blocked by `429 no credits` (TASK-0009); OpenAI is not selected.
+- Earlier, with the wrong account id, generation returned **503** with the
+  sanitized reason `Cloudflare rejected the credentials (HTTP 401): Authentication
+  error...`; that failed attempt row was retained.
+
+## Live generation verification (completed)
+
+After the operator corrected `CLOUDFLARE_ACCOUNT_ID` (token has Workers AI
+Read/Edit scoped to that account), only `seo-stat-api.service` was restarted and
+the running process was confirmed to match the file (hashes) for
+`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `IMAGE_PROVIDER`.
+
+- **Real generation (through the app)**: `POST .../images/generate` → 201 in ~1.8 s;
+  image `v3`: provider `cloudflare`, model `@cf/black-forest-labs/flux-1-schnell`,
+  **`image/jpeg`** (detected from bytes), `cover-v3.jpg`, **1024×1024**, 81,835
+  bytes, `usage: null` (not reported), `parameters: { steps: 4, model }`.
+- **Edited prompt + regeneration**: the v3 prompt was edited and persisted
+  (PATCH 200), then regenerated from the edited prompt → 201 in ~1.4 s; image
+  `v4`: `image/jpeg`, `cover-v4.jpg`, 1024×1024, 46,882 bytes, steps 4.
+- **Both versions remain**: reload lists versions 1–4; v1/v2 are the retained
+  failed attempts, v3/v4 are the two successful generated images.
+- **Select + alt + reload**: selecting v4 (201) and editing its alt text (200)
+  persisted after reload — `selectedVersion: 4`, `selectedMime: image/jpeg`,
+  `selectedAlt: "Final cover: textile recycling loop (edited)"`.
+- **Serving**: `GET .../images/{id}/file` for both v3 and v4 returned 200
+  `image/jpeg` with the full byte counts; both downloaded files carry a valid JPEG
+  signature. The files persist on disk under `CONTENT_ASSET_DIR` outside the
+  release directory.
+- Cloudflare stayed selected; **no OpenAI request/fallback and no paid-plan
+  activation**. Attempt history is preserved (v1/v2 failures plus v3/v4).
