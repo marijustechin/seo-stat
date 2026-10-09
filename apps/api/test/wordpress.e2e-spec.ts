@@ -1,6 +1,9 @@
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import type { FastifyInstance } from 'fastify';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/bootstrap/configure-app.js';
@@ -139,6 +142,8 @@ describe('WordPress integration and draft export (mocked client)', () => {
   const wordpress = new StubWordpressClient();
   const created: string[] = [];
   const originalKey = process.env.INTEGRATION_ENCRYPTION_KEY;
+  const originalAssetDir = process.env.CONTENT_ASSET_DIR;
+  let assetDir: string;
 
   const call = (method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', url: string, payload?: Record<string, unknown>) =>
     server.inject({ method, url: `/seo-stat/api${url}`, ...(payload ? { payload } : {}) });
@@ -199,6 +204,8 @@ describe('WordPress integration and draft export (mocked client)', () => {
 
   beforeAll(async () => {
     process.env.INTEGRATION_ENCRYPTION_KEY = 'a'.repeat(64);
+    assetDir = await mkdtemp(join(tmpdir(), 'seo-stat-wp-'));
+    process.env.CONTENT_ASSET_DIR = assetDir;
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(WordpressClient)
       .useValue(wordpress)
@@ -220,8 +227,11 @@ describe('WordPress integration and draft export (mocked client)', () => {
   afterAll(async () => {
     if (created.length > 0) await prisma.project.deleteMany({ where: { id: { in: created } } });
     await app.close();
+    await rm(assetDir, { recursive: true, force: true });
     if (originalKey === undefined) delete process.env.INTEGRATION_ENCRYPTION_KEY;
     else process.env.INTEGRATION_ENCRYPTION_KEY = originalKey;
+    if (originalAssetDir === undefined) delete process.env.CONTENT_ASSET_DIR;
+    else process.env.CONTENT_ASSET_DIR = originalAssetDir;
   });
 
   it('stores an encrypted connection and never returns the password', async () => {
