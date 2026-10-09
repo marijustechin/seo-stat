@@ -12,6 +12,7 @@ import {
   topicsJsonSchema,
 } from './content.schemas.js';
 import { buildArticlePrompt, buildTopicPrompt } from './content.prompts.js';
+import { guardArticleClaims } from './content.claims.js';
 import type { BriefSnapshot, ContentSettingsSnapshot } from './content.types.js';
 
 function estimateCost(inputTokens: number, outputTokens: number): number | null {
@@ -131,6 +132,8 @@ export class ContentRunner implements OnModuleInit {
           callToAction: suggestion.callToAction,
           relevance: suggestion.relevance,
           informationNeeded: suggestion.informationNeeded,
+          objectiveAlignment: suggestion.objectiveAlignment,
+          priority: suggestion.priority,
           origin: 'generated',
           generationRunId: runId,
           sources: suggestion.sources as unknown as Prisma.InputJsonValue,
@@ -156,7 +159,8 @@ export class ContentRunner implements OnModuleInit {
       jsonSchema: articleJsonSchema(),
       maxOutputTokens: CONTENT_LIMITS.maxOutputTokensArticle,
     });
-    const output = parseArticleOutput(model.output);
+    const parsed = parseArticleOutput(model.output);
+    const { output } = guardArticleClaims(parsed);
 
     const brief = await this.prisma.articleBrief.findFirst({ where: { projectId: run.projectId, topicId: resolvedTopicId } });
     const aggregate = await this.prisma.articleDraft.aggregate({

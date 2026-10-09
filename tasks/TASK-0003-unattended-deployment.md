@@ -121,6 +121,10 @@ Out of scope:
   unset.
 - Rollback restores the previous application release only; it does not reverse
   database migrations.
+- Correction (TASK-0007 follow-up): the deploy timer originally used only
+  `OnBootSec`/`OnUnitActiveSec`, which could leave it active with no next elapse
+  after a reboot. It now uses `OnCalendar=*:0/3` with `Persistent=true`
+  (`deploy/systemd/seo-stat-deploy.timer`).
 - Recommended next task: persistent schedules, safe job claiming, execution
   history, and a simulated action.
 

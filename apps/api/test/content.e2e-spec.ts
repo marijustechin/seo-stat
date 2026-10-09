@@ -24,6 +24,8 @@ function topicSuggestion(index: number) {
     callToAction: 'Act',
     relevance: 'Relevant',
     informationNeeded: 'Confirm coverage',
+    objectiveAlignment: 'Serves the stated objective',
+    priority: index === 1 ? 'primary' : 'secondary',
     sources: [{ url: 'https://example.com', note: 'home', retrievedAt: '2026-01-01T00:00:00.000Z' }],
   };
 }
@@ -48,7 +50,7 @@ class StubProvider extends AnalysisProvider {
     }
     return {
       output: {
-        title: 'Generated title',
+        title: 'Reuse and Zero Landfill Explained',
         excerpt: 'Short excerpt.',
         bodyMarkdown: '# Heading\n\nBody text.',
         slug: 'generated-title',
@@ -154,6 +156,8 @@ describe('Content (integration, mocked provider)', () => {
     expect(topics.length).toBeGreaterThanOrEqual(1);
     expect(topics.length).toBeLessThanOrEqual(5);
     expect(topics[0].title).toContain('Topic');
+    expect(topics[0].objectiveAlignment).toBeTruthy();
+    expect(['primary', 'secondary', 'supporting']).toContain(topics[0].priority);
   });
 
   it('supports manual topic create, edit, and dismiss', async () => {
@@ -217,7 +221,10 @@ describe('Content (integration, mocked provider)', () => {
     const draft = (await call('GET', `/projects/${projectId}/content/drafts/${draftId}`)).json();
     expect(draft.version).toBe(1);
     expect(draft.bodyMarkdown).toContain('Heading');
-    expect(draft.unresolvedClaims).toHaveLength(1);
+    // The unsupported headline claim was neutralized and recorded.
+    expect(draft.title).not.toMatch(/zero[-\s]?landfill/i);
+    expect(draft.unresolvedClaims.length).toBeGreaterThanOrEqual(1);
+    expect(draft.unresolvedClaims.some((claim: string) => /zero landfill/i.test(claim))).toBe(true);
 
     const saved = await call('PATCH', `/projects/${projectId}/content/drafts/${draftId}`, {
       bodyMarkdown: 'Manually edited',

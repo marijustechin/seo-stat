@@ -84,6 +84,8 @@ model ContentTopic {
   callToAction      String?      @map("call_to_action")
   relevance         String?
   informationNeeded String?      @map("information_needed")
+  objectiveAlignment String?     @map("objective_alignment")
+  priority          String       @default("supporting")
   origin            String       @default("generated")
   status            String       @default("suggested")
   sources           Json?

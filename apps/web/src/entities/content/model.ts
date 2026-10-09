@@ -15,6 +15,8 @@ export interface ContentTopic {
   callToAction: string | null;
   relevance: string | null;
   informationNeeded: string | null;
+  objectiveAlignment: string | null;
+  priority: 'primary' | 'secondary' | 'supporting';
   origin: string;
   status: 'suggested' | 'selected' | 'dismissed';
   sources: SourceRef[];
@@ -91,6 +93,8 @@ export interface TopicInput {
   callToAction?: string | null;
   relevance?: string | null;
   informationNeeded?: string | null;
+  objectiveAlignment?: string | null;
+  priority?: 'primary' | 'secondary' | 'supporting';
 }
 
 export interface BriefInput {

@@ -74,6 +74,8 @@ export class ContentService {
         callToAction: clean(dto.callToAction),
         relevance: clean(dto.relevance),
         informationNeeded: clean(dto.informationNeeded),
+        objectiveAlignment: clean(dto.objectiveAlignment),
+        priority: dto.priority ?? 'supporting',
         origin: 'manual',
       },
     });
@@ -93,6 +95,8 @@ export class ContentService {
     if (dto.callToAction !== undefined) data.callToAction = clean(dto.callToAction);
     if (dto.relevance !== undefined) data.relevance = clean(dto.relevance);
     if (dto.informationNeeded !== undefined) data.informationNeeded = clean(dto.informationNeeded);
+    if (dto.objectiveAlignment !== undefined) data.objectiveAlignment = clean(dto.objectiveAlignment);
+    if (dto.priority !== undefined) data.priority = dto.priority;
     const topic = await this.prisma.contentTopic.update({ where: { id: topicId }, data });
     return this.toTopicView(topic);
   }
@@ -416,6 +420,8 @@ export class ContentService {
       callToAction: string | null;
       relevance: string | null;
       informationNeeded: string | null;
+      objectiveAlignment: string | null;
+      priority: string;
       origin: string;
       status: string;
       sources: Json;
@@ -433,6 +439,8 @@ export class ContentService {
       callToAction: record.callToAction,
       relevance: record.relevance,
       informationNeeded: record.informationNeeded,
+      objectiveAlignment: record.objectiveAlignment,
+      priority: record.priority as TopicView['priority'],
       origin: record.origin,
       status: record.status as TopicStatus,
       sources: asSources(record.sources),

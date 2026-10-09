@@ -16,6 +16,8 @@ const topic = z.strictObject({
   callToAction: z.string().max(CONTENT_LIMITS.callToAction),
   relevance: z.string().max(CONTENT_LIMITS.relevance),
   informationNeeded: z.string().max(CONTENT_LIMITS.informationNeeded),
+  objectiveAlignment: z.string().max(CONTENT_LIMITS.objectiveAlignment),
+  priority: z.enum(['primary', 'secondary', 'supporting']),
   sources: z.array(sourceRef).max(CONTENT_LIMITS.maxSources),
 });
 

@@ -1,5 +1,6 @@
-import { IsOptional, IsString, Length, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, Length, MaxLength } from 'class-validator';
 import { CONTENT_LIMITS } from '../content.limits.js';
+import { TOPIC_PRIORITIES } from '../content.types.js';
 
 export class CreateTopicDto {
   @IsString()
@@ -37,4 +38,13 @@ export class CreateTopicDto {
   @IsString()
   @MaxLength(CONTENT_LIMITS.informationNeeded)
   informationNeeded?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(CONTENT_LIMITS.objectiveAlignment)
+  objectiveAlignment?: string | null;
+
+  @IsOptional()
+  @IsIn(TOPIC_PRIORITIES)
+  priority?: 'primary' | 'secondary' | 'supporting';
 }

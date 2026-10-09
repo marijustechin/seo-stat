@@ -7,6 +7,9 @@ export type ContentRunStatus = (typeof CONTENT_RUN_STATUSES)[number];
 export const TOPIC_STATUSES = ['suggested', 'selected', 'dismissed'] as const;
 export type TopicStatus = (typeof TOPIC_STATUSES)[number];
 
+export const TOPIC_PRIORITIES = ['primary', 'secondary', 'supporting'] as const;
+export type TopicPriority = (typeof TOPIC_PRIORITIES)[number];
+
 export interface ContentSettingsSnapshot {
   websiteUrl: string | null;
   businessContext: string | null;
@@ -46,6 +49,8 @@ export interface TopicView {
   callToAction: string | null;
   relevance: string | null;
   informationNeeded: string | null;
+  objectiveAlignment: string | null;
+  priority: 'primary' | 'secondary' | 'supporting';
   origin: string;
   status: TopicStatus;
   sources: SourceRef[];

@@ -3,7 +3,10 @@ Description=Periodically poll for and deploy seo-stat main builds
 
 [Timer]
 OnBootSec=2min
-OnUnitActiveSec=3min
+# A calendar schedule guarantees a next elapse exists (OnUnitActiveSec alone
+# left the timer active with no future trigger after a reboot). Persistent=true
+# makes up missed runs after downtime.
+OnCalendar=*:0/3
 Persistent=true
 RandomizedDelaySec=30s
 

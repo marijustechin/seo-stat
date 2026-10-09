@@ -278,7 +278,12 @@ export function ContentWorkspace() {
               <li key={topic.id} className="run-item">
                 <div className="run-head">
                   <strong>{topic.title}</strong>
-                  <span className="badge">{topic.status}</span>
+                  <span>
+                    <span className={`badge ${topic.priority === 'primary' ? 'badge-active' : ''}`}>
+                      {topic.priority === 'primary' ? 'Primary objective' : topic.priority}
+                    </span>{' '}
+                    <span className="badge">{topic.status}</span>
+                  </span>
                 </div>
                 {editingTopic?.id === topic.id ? (
                   <div>
@@ -321,6 +326,12 @@ export function ContentWorkspace() {
                       <dt>Angle</dt>
                       <dd>{topic.angle}</dd>
                     </div>
+                    {topic.objectiveAlignment && (
+                      <div>
+                        <dt>Objective alignment</dt>
+                        <dd>{topic.objectiveAlignment}</dd>
+                      </div>
+                    )}
                     {topic.callToAction && (
                       <div>
                         <dt>Call to action</dt>

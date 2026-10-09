@@ -47,7 +47,10 @@ them.
    and uploads it as an artifact named `seo-stat-deploy-<sha>` (only for `main`
    pushes).
 2. On the server, `seo-stat-deploy.timer` runs `deploy/scripts/poll-and-deploy.sh`
-   every few minutes. It asks the GitHub Actions API for the latest successful
+   every few minutes. The timer uses a calendar schedule (`OnCalendar=*:0/3`) with
+   `Persistent=true` so a next elapse always exists and missed runs are made up
+   after downtime; `OnUnitActiveSec` alone could leave the timer active with no
+   future trigger after a reboot. It asks the GitHub Actions API for the latest successful
    `push` run on `main`, finds that run's artifact, verifies the artifact's
    `RELEASE_SHA` matches the run's commit, and deploys it.
 3. `deploy/scripts/deploy.sh` is serialized with `flock`; it is idempotent (a SHA

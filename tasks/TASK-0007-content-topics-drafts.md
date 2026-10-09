@@ -119,6 +119,37 @@ schedules, Google metrics, and a general workflow builder.
   `systemctl --user start seo-stat-deploy.timer`; auto-deployment resumed. The
   reboot behaviour should be re-verified.
 
+## Follow-up — business relevance, unsupported headlines, deployment persistence
+
+- **Objectives finding**: TexTrade UK's saved objectives state the primary
+  objective is to attract clothing brands/retailers for responsible handling of
+  unsold/outdated/end-of-season stock. The generated topics include the
+  brand/retailer topic ("What Happens to Unsold, Outdated and End-of-Season
+  Clothing? A Responsible Brand Surplus Process") whose objective reads
+  "Primary objective — generate qualified brand solutions enquiries". The agreed
+  objective **is present**. Project settings were not modified.
+- **Topic relevance**: topics now carry `objectiveAlignment` and `priority`
+  (`primary`/`secondary`/`supporting`); the UI shows a "Primary objective" badge
+  and the alignment. Other audiences remain selectable.
+- **Unsupported headlines**: a claim guard neutralizes absolute claims ("zero
+  landfill", "100%", "guaranteed", "certified", "carbon neutral", superlatives)
+  in the title, excerpt, SEO fields, and call to action, and records them under
+  unresolved claims. The earlier resident draft (v1, "…Zero Landfill…") is
+  preserved as history; new generations are guarded. No automatic fact-checking
+  is claimed.
+- **Timer diagnosis**: after the host reboot the timer was active (since
+  06:32:59 UTC) but had **no next elapse** because it used only
+  `OnBootSec`/`OnUnitActiveSec` — the boot offset had already passed and
+  `OnUnitActiveSec` had no prior activation to reference. Fix: added
+  `OnCalendar=*:0/3` with `Persistent=true` (a calendar schedule always has a
+  next elapse and makes up missed runs after downtime). Verified by
+  configuration (`systemd-analyze calendar`, `list-timers` shows a next
+  elapse); an observed reboot-persistence test was **not** performed (the shared
+  server was not rebooted).
+- **B2B draft**: uses the existing brand/retailer surplus topic with a
+  commercially relevant brief; the resident-focused draft is preserved. (See
+  live notes below.)
+
 ## State
 
 - Implementation: complete

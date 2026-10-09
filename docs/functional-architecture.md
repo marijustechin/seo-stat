@@ -114,9 +114,13 @@ select a topic, review/edit a brief, generate an article draft, and edit/review 
   unapplied analysis suggestions are never substituted. Prior analysis research
   evidence may inform proposals with source attribution and retrieval dates.
   Each topic records title, audience, objective, reader need, angle, call to
-  action, relevance, and information needed. No invented search volumes,
-  keyword difficulty, rankings, or traffic. Topics can be created manually,
-  edited, and dismissed; repeated generation avoids obvious duplicates.
+  action, relevance, information needed, an `objectiveAlignment` (the stated
+  objective it serves), and a `priority` (`primary` when it directly serves the
+  stated primary objective, otherwise `secondary`/`supporting`). Alignment and
+  priority are shown so the user can see commercial relevance while still
+  selecting any audience. No invented search volumes, keyword difficulty,
+  rankings, or traffic. Topics can be created manually, edited, and dismissed;
+  repeated generation avoids obvious duplicates.
 - The brief is editable and prefilled from the topic and saved context (title,
   angle, audience, business outcome, outline, call to action, destination URL,
   sources, confirmations). Unknown operational details stay unknown. Generation
@@ -125,7 +129,11 @@ select a topic, review/edit a brief, generate an article draft, and edit/review 
   bounds and URL/untrusted-content protections. Generated articles include
   title, excerpt, Markdown body, slug, SEO title, meta description, call to
   action, sources, and material claims requiring confirmation. SEO fields are
-  editable proposals validated against storage limits.
+  editable proposals validated against storage limits. A claim guard neutralizes
+  unsupported absolute claims (for example "zero landfill", "100%", "guaranteed",
+  "certified", "carbon neutral", or superlatives) in the title, excerpt, SEO
+  fields, and call to action, and records them under unresolved claims; it does
+  not claim to verify facts automatically.
 - Drafts are versioned per topic; regeneration appends a new version and keeps
   the previous one. Manual saving works without an AI call. Stale saves are
   rejected (optimistic concurrency). "Ready for review" means available for

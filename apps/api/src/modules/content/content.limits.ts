@@ -9,6 +9,7 @@ export const CONTENT_LIMITS = {
   callToAction: 500,
   relevance: 1000,
   informationNeeded: 1000,
+  objectiveAlignment: 500,
   outline: 4000,
   excerpt: 500,
   seoTitle: 120,
