@@ -77,6 +77,31 @@ schedules, Google metrics, and a general workflow builder.
   ports 3011/3012 preserved.
 - No paid AI calls in CI (provider and research are mocked).
 
+## Live verification (deployed release)
+
+- Deployed automatically (with a pre-migration backup) to
+  `68fd45fdbe5bf4660346814d47b6c1737937fb48`; migration
+  `20261009070146_content_topics_briefs_drafts` applied; health 200.
+- Provider configured (`deepseek-flash`); Firecrawl not configured, so research
+  used the `direct` backend.
+- **Topic generation** on TexTrade UK completed (run `8bd7a86c…`, 2399 input /
+  1712 output tokens, cost unavailable). It produced 5 distinct topics with
+  distinct audiences, including a brand/retailer topic ("What Happens to Unsold,
+  Outdated and End-of-Season Clothing? A Responsible Brand Surplus Process") and
+  separate audiences for consumers, charities/schools, wholesale buyers, and
+  councils.
+- **Article draft** generation completed (run `b7cab1bb…`, 11085 input / 1842
+  output tokens, cost unavailable) and saved as **version 1, status `draft`**
+  (not ready for review): title "What Happens to Your Donated Clothes? Reuse,
+  Recycling and Zero Landfill Explained", slug
+  `what-happens-to-donated-clothes-reuse-recycling-zero-landfill`, 5442 body
+  characters, 4 sources, 5 unresolved claims. It is available in the project
+  Content section (draft id `aebcf00d…`) for human review; suggestions were not
+  published and project settings were not changed.
+- Research limitation: TexTrade UK's saved settings are minimal (business
+  context/audience/objectives empty), so topics relied on the website plus prior
+  analysis evidence; the draft accordingly carries unresolved claims to confirm.
+
 ## Completion notes
 
 - New Prisma models: `content_topics`, `article_briefs`, `article_drafts`,
@@ -89,10 +114,16 @@ schedules, Google metrics, and a general workflow builder.
 - UI journey note: the deployed Content page and its same-origin API journey were
   exercised; a scripted real-browser click-through was not available in this
   environment (see the record's live notes).
+- Deployment finding: after a mid-session host reboot the systemd user
+  `seo-stat-deploy.timer` was found inactive and had to be re-armed with
+  `systemctl --user start seo-stat-deploy.timer`; auto-deployment resumed. The
+  reboot behaviour should be re-verified.
 
 ## State
 
 - Implementation: complete
-- Verification: complete for mocked/structural checks and the live deployment
+- Verification: complete for mocked/structural checks and a real TexTrade UK
+  topic + article-draft run (draft left unapplied)
 - Commit: committed on `main`
-- Deployment: deployed automatically by the systemd user timer
+- Deployment: deployed automatically by the systemd user timer (verified at
+  `68fd45f`; timer re-armed after a host reboot)
