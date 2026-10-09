@@ -74,12 +74,16 @@ multi-image galleries, and text-provider changes.
 
 - Implementation: complete
 - Verification: complete (mocked/structural checks)
-- Commit: committed on `main`
-- Deployment: deployed automatically by the systemd user timer (see live note)
+- Commit: committed on `main` (`68f7b25`)
+- Deployment: deployed automatically by the systemd user timer (`68f7b25`; see
+  live note)
 
 ## Live verification (deployed release)
 
-- Migration `20261009080318_answers_knowledge_images` applied during deployment;
-  health 200. No `IMAGE_API_KEY` is configured on the server, so the System page
-  reports image generation as not configured and generation returns 503; cover
-  uploads work without a credential. No paid image call was made.
+- Deployed release `68f7b25`; deploy log shows migration
+  `20261009080318_answers_knowledge_images` applied and "health checks passed";
+  `prisma migrate status` up to date; loopback health 200. The System status
+  reports `image: { provider: "openai-images", model: "gpt-image-2.5-flare",
+  configured: false }`. No `IMAGE_API_KEY` is configured on the server, so
+  generation returns 503 while cover uploads work without a credential. No paid
+  image call was made.

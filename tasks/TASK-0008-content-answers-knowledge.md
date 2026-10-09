@@ -81,12 +81,16 @@ image generation (separate task, TASK-0009).
 
 - Implementation: complete
 - Verification: complete (mocked/structural checks)
-- Commit: committed on `main`
-- Deployment: deployed automatically by the systemd user timer (see live note)
+- Commit: committed on `main` (`68f7b25`)
+- Deployment: deployed automatically by the systemd user timer (`68f7b25`; see
+  live note)
 
 ## Live verification (deployed release)
 
-- Migration `20261009080318_answers_knowledge_images` was applied to the
-  production database during deployment; health 200. Image generation is not
-  configured (no `IMAGE_API_KEY`), so generation returns 503 and uploads remain
-  available; answers/knowledge and staleness do not require any provider.
+- Deployed release `68f7b25` via the systemd user timer; deploy log shows
+  migration `20261009080318_answers_knowledge_images` applied and "health checks
+  passed"; `prisma migrate status` reports "Database schema is up to date!" (5
+  migrations); loopback health 200. `GET /seo-stat/api/system/status` exposes the
+  new image-provider block. Image generation is not configured (no
+  `IMAGE_API_KEY`), so generation returns 503 and uploads remain available;
+  answers/knowledge and staleness require no provider.
