@@ -116,16 +116,39 @@ scheduled publication, and image generation (image provider is unchanged).
 ## State
 
 - Implementation: complete
-- Verification: complete (automated + structural). **Live WordPress verification
-  is pending** — no WordPress credentials were available and none were created.
-- Commit: committed on `main`
-- Deployment: deployed automatically by the systemd user timer (see live note)
+- Verification: complete (automated + deployed structural checks). **Live
+  WordPress verification is pending** — no WordPress credentials were available
+  and none were created.
+- Commit: committed on `main` (`ca902e9`)
+- Deployment: deployed automatically by the systemd user timer (`ca902e9`; see
+  live note)
 
-## Live verification
+## Live verification (deployed release)
 
+- Deployed `ca902e9`; deploy log shows migration
+  `20261009101811_wordpress_integration` applied and health checks passed;
+  `prisma migrate status` reports "Database schema is up to date" (6 migrations);
+  loopback health 200. `system/status` reports
+  `integrations.encryptionConfigured: true` (and `image.configured: true`).
+- The integration encryption key was provisioned by the deployed
+  `install-user-units.sh`: `/srv/seo-stat/config/integration.key` (64 hex chars,
+  mode 0600) and `INTEGRATION_ENCRYPTION_KEY_FILE` present in `api.env`.
+- Live **structural** checks against the deployed API (no WordPress network call
+  and no credential acquired):
+  - save a temporary connection → 200, `connected: true`, `hasPassword: true`; the
+    response contained no secret (checked);
+  - the stored ciphertext did **not** equal the plaintext and is stored as an
+    encrypted value (`v1.…`);
+  - `GET .../content/drafts/:id/wordpress` returned `configured: true`,
+    `eligible: true`, `changedSinceExport: true`, no attempts;
+  - disconnect → 200, `connected: false`, and the row was removed (0 rows; no
+    export records).
 - Image generation: provider rejected (429 no credits) — pending (TASK-0009).
-- WordPress: **pending**. No WordPress site/credentials were provided, and the
-  task forbids acquiring them. The implementation is deployed; the exact setup
-  steps are in `docs/deployment.md`. When credentials are available, exercise one
-  real create and one update, confirming the same remote post id, the cover as
-  featured media, and `status: draft` (no publication).
+
+## Live WordPress export verification (PENDING)
+
+- No WordPress site or credentials were provided, and the task forbids acquiring
+  them. The implementation is deployed and documented
+  (`docs/deployment.md`). When credentials are available: connect a site, run one
+  real create and one update, and confirm the **same remote post id**, the cover
+  as featured media, and `status: draft` (no publication).
