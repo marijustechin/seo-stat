@@ -1,7 +1,7 @@
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import type { FastifyInstance } from 'fastify';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -462,7 +462,7 @@ describe('Content (integration, mocked provider)', () => {
     expect(drafts.find((draft) => draft.id === regeneratedId)?.stale).toBe(false);
   });
 
-  it('manages cover images: upload, alt, select, serve, isolation, archived state', async () => {
+  it('manages cover images: upload, preview, select, alt, reload, regenerate, usage, and project scoping', async () => {
     const projectId = await createProject('Content Images');
     const topic = (await call('POST', `/projects/${projectId}/content/topics`, {
       title: 'Image topic', audience: 'A', objective: 'O', angle: 'Angle',
@@ -475,6 +475,9 @@ describe('Content (integration, mocked provider)', () => {
       (await call('POST', `/projects/${projectId}/content/drafts/${draftId}/images/generate`, { prompt: 'x' })).statusCode,
     ).toBe(503);
 
+    // Upload. The `call` helper sends no authorization header or cookie: the API
+    // has no authentication, so a 201 here also documents that image access is
+    // gated only by project/draft association, not by identity.
     const uploaded = await call('POST', `/projects/${projectId}/content/drafts/${draftId}/images/upload`, {
       dataBase64: PNG_1X1,
       fileName: 'cover.png',
@@ -487,33 +490,67 @@ describe('Content (integration, mocked provider)', () => {
     expect(image.status).toBe('ready');
     expect(image.width).toBe(1);
     expect(image.bytes).toBeGreaterThan(0);
+    expect(image.usage).toBeNull();
 
-    const list = (await call('GET', `/projects/${projectId}/content/drafts/${draftId}/images`)).json() as Array<{ id: string; selected: boolean }>;
+    // Reload (list): the upload is persisted with its alt text.
+    const list = (await call('GET', `/projects/${projectId}/content/drafts/${draftId}/images`)).json() as Array<{
+      id: string;
+      selected: boolean;
+      altText: string | null;
+    }>;
     expect(list).toHaveLength(1);
+    expect(list[0]?.altText).toBe('A cover');
 
+    // Assets are written to the asset directory (outside the release dir).
+    expect((await readdir(assetDir)).length).toBeGreaterThan(0);
+
+    // Select, then reload: selection is persisted.
     await call('POST', `/projects/${projectId}/content/images/${image.id}/select`);
     const selected = (await call('GET', `/projects/${projectId}/content/drafts/${draftId}/images`)).json() as Array<{ id: string; selected: boolean }>;
     expect(selected.find((item) => item.id === image.id)?.selected).toBe(true);
 
+    // Edit alt text, then reload: persisted.
     const patched = await call('PATCH', `/projects/${projectId}/content/images/${image.id}`, { altText: 'Updated alt' });
     expect(patched.json().altText).toBe('Updated alt');
+    const afterAlt = (await call('GET', `/projects/${projectId}/content/drafts/${draftId}/images`)).json() as Array<{ id: string; altText: string | null }>;
+    expect(afterAlt.find((item) => item.id === image.id)?.altText).toBe('Updated alt');
 
+    // Preview/serve through the project-scoped route.
     const file = await call('GET', `/projects/${projectId}/content/images/${image.id}/file`);
     expect(file.statusCode).toBe(200);
     expect(String(file.headers['content-type'])).toContain('image/png');
+    expect(String(file.headers['cache-control'])).toContain('private');
     expect(file.rawPayload.length).toBeGreaterThan(0);
 
+    // Project scoping only: a different project cannot read the asset (404).
     const other = await createProject('Content Images Other');
     expect((await call('GET', `/projects/${other}/content/images/${image.id}/file`)).statusCode).toBe(404);
 
+    // Generate (usage recorded), then reload: the previous uploaded image is kept.
     imageProvider.configured = true;
     const generated = await call('POST', `/projects/${projectId}/content/drafts/${draftId}/images/generate`, {
       prompt: 'A conceptual illustration',
       altText: 'Generated cover',
     });
     expect(generated.statusCode).toBe(201);
-    expect(generated.json().kind).toBe('generated');
+    const generatedImage = generated.json();
+    expect(generatedImage.kind).toBe('generated');
+    expect(generatedImage.provider).toBe('stub-image');
+    expect(generatedImage.model).toBe('stub-image-model');
+    expect(generatedImage.usage).toEqual({ stub: true });
+    expect(generatedImage.prompt).toBe('A conceptual illustration');
     imageProvider.configured = false;
+
+    const afterGenerate = (await call('GET', `/projects/${projectId}/content/drafts/${draftId}/images`)).json() as Array<{ id: string; version: number }>;
+    expect(afterGenerate).toHaveLength(2);
+    expect(afterGenerate.map((item) => item.version).sort()).toEqual([1, 2]);
+    expect(afterGenerate.some((item) => item.id === image.id)).toBe(true);
+
+    // Editable prompt: PATCH persists and survives a reload.
+    const newPrompt = 'A revised conceptual illustration';
+    await call('PATCH', `/projects/${projectId}/content/images/${generatedImage.id}`, { prompt: newPrompt });
+    const afterPrompt = (await call('GET', `/projects/${projectId}/content/drafts/${draftId}/images`)).json() as Array<{ id: string; prompt: string | null }>;
+    expect(afterPrompt.find((item) => item.id === generatedImage.id)?.prompt).toBe(newPrompt);
 
     await call('POST', `/projects/${projectId}/archive`);
     expect(

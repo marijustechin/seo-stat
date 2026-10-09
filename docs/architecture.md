@@ -91,6 +91,10 @@ No scheduling, job execution, generation, publishing, or reporting exists yet.
 - Job-store schema and where execution history lives.
 - How application-level (non-secret) settings are managed beyond environment
   variables.
+- Authentication and access control: **not implemented**. The API (including the
+  content image-file route) trusts the caller and relies on the private network
+  and nginx; project scoping limits which records are visible but is not
+  identity-based authentication.
 - Review workflow mechanics and where review state lives.
 - Duplicate-publication detection strategy per channel.
 - Whether reporting reads third-party APIs directly or stored snapshots.

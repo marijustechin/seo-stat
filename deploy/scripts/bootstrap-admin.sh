@@ -37,6 +37,7 @@ command -v flock >/dev/null 2>&1 || echo "warning: flock missing"
 echo "== directories =="
 install -d -o "$OWNER" -g "$OWNER" -m 0750 "$ROOT"
 install -d -o "$OWNER" -g "$OWNER" -m 0750 "$ROOT"/{config,state,backups,releases,scripts,logs}
+install -d -o "$OWNER" -g "$OWNER" -m 0750 "$ROOT/data" "$ROOT/data/content-images"
 
 echo "== PostgreSQL role and database =="
 api_env="$ROOT/config/api.env"

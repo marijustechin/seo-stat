@@ -173,16 +173,33 @@ select a topic, review/edit a brief, generate an article draft, and edit/review 
 
 - A draft can have cover images: generated from a visual brief or uploaded
   (PNG/JPEG/WebP, size-limited). Each image records kind, status, prompt, alt
-  text, provider/model, dimensions, bytes, and selected state.
-- Images are project- and draft-scoped and isolated between projects. Files are
-  stored outside the release directory (`CONTENT_ASSET_DIR`) and served only
-  through the authenticated project route; the stored path is treated as a
-  basename to prevent traversal. Archived projects cannot change images.
+  text, provider/model, dimensions, bytes, usage, and selected state.
+- The **visual prompt is editable** on an existing generated image (saved with
+  `PATCH`), and **regeneration is explicit** (the per-image "Regenerate" and the
+  top-level "Generate cover image" actions). Regeneration always appends a new
+  version; **previous images are preserved** and listed. Generation-usage records
+  (the provider's `usage` object) and provider/model are stored per generated
+  image and shown in the UI.
+- Images are project- and draft-scoped. Files are stored outside the release
+  directory (`CONTENT_ASSET_DIR`) and served through the project-scoped API route
+  `GET /projects/:projectId/content/images/:imageId/file`. **The application has
+  no authentication**: the route validates only project/draft association, so
+  another project gets 404 and a request without any credential succeeds. The
+  stored path is treated as a basename to prevent traversal. Archived projects
+  cannot change images.
 - Only the **selected** image is the intended cover; a generated image is a draft
   visual, not an editorially verified asset. Image generation is a separate
   capability with its own credential: when unconfigured, the API returns 503, the
   UI shows an unavailable state, and uploads still work. The System page reports
   the image provider configuration separately.
+- Provider: OpenAI Images, `POST /v1/images/generations`, default model
+  `gpt-image-2.5-flare` (`gpt-image-2.5-sunburst` is the precision-editing
+  alternative), response `b64_json` (PNG bytes), default size `1536x1024`
+  (landscape; recommended standard sizes are `1024x1024`, `1536x1024`,
+  `1024x1536`). Flare is the default because it targets fast, high-quality
+  everyday generation; Sunburst is preferred only when editing precision matters.
+  The provider is optional and uses a separate `IMAGE_API_KEY`; DeepSeek remains
+  the text provider.
 
 ## Review policy semantics
 

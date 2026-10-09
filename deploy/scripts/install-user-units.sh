@@ -7,7 +7,7 @@ deploy_dir="$(cd "$(dirname "$0")/.." && pwd)"
 root="${SEO_STAT_ROOT:-/srv/seo-stat}"
 unit_dir="$HOME/.config/systemd/user"
 
-mkdir -p "$unit_dir" "$root/releases" "$root/state" "$root/backups" "$root/config" "$root/scripts" "$root/logs"
+mkdir -p "$unit_dir" "$root/releases" "$root/state" "$root/backups" "$root/config" "$root/scripts" "$root/logs" "$root/data/content-images"
 
 install -m 0644 "$deploy_dir/systemd/"*.service "$deploy_dir/systemd/"*.timer "$unit_dir/"
 install -m 0755 "$deploy_dir/scripts/"*.sh "$root/scripts/"

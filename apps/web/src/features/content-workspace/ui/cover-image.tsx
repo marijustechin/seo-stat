@@ -9,12 +9,30 @@ import { apiUrl } from '@/shared/config/app';
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const ALLOWED = ['image/png', 'image/jpeg', 'image/webp'];
 
+function explain(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.status === 503) return 'Image generation is not configured on the server.';
+    if (err.status === 413) return 'The image is larger than the allowed size.';
+    if (err.status === 400) return err.message;
+  }
+  return err instanceof Error ? err.message : fallback;
+}
+
+function usageSummary(usage: unknown): string {
+  if (!usage || typeof usage !== 'object') return '';
+  return Object.entries(usage as Record<string, unknown>)
+    .filter(([, value]) => typeof value === 'number')
+    .map(([key, value]) => `${key}: ${String(value)}`)
+    .join(', ');
+}
+
 export function CoverImage({ projectId, draftId }: { projectId: string; draftId: string }) {
   const [images, setImages] = useState<ArticleImage[] | null>(null);
   const [visualBrief, setVisualBrief] = useState('');
   const [altText, setAltText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async () => {
@@ -31,20 +49,13 @@ export function CoverImage({ projectId, draftId }: { projectId: string; draftId:
     void load();
   }, [load]);
 
-  const explain = (err: unknown, fallback: string) => {
-    if (err instanceof ApiError) {
-      if (err.status === 503) return 'Image generation is not configured on the server.';
-      if (err.status === 413) return 'The image is larger than the allowed size.';
-      if (err.status === 400) return err.message;
-    }
-    return err instanceof Error ? err.message : fallback;
-  };
-
   const generate = async () => {
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await generateImage(projectId, draftId, { prompt: visualBrief || undefined, altText: altText || undefined });
+      setNotice('New cover generated. Previous images are kept.');
       await load();
     } catch (err) {
       setError(explain(err, 'Failed to generate the cover image.'));
@@ -64,9 +75,11 @@ export function CoverImage({ projectId, draftId }: { projectId: string; draftId:
     }
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       const dataBase64 = await fileToBase64(file);
       await uploadImage(projectId, draftId, { dataBase64, fileName: file.name, mimeType: file.type, altText: altText || undefined });
+      setNotice('Image uploaded.');
       await load();
     } catch (err) {
       setError(explain(err, 'Failed to upload the image.'));
@@ -79,6 +92,7 @@ export function CoverImage({ projectId, draftId }: { projectId: string; draftId:
   const markSelected = async (image: ArticleImage) => {
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await selectImage(projectId, image.id);
       await load();
@@ -89,15 +103,6 @@ export function CoverImage({ projectId, draftId }: { projectId: string; draftId:
     }
   };
 
-  const updateAlt = async (image: ArticleImage, value: string) => {
-    try {
-      await updateImage(projectId, image.id, { altText: value });
-      setImages((current) => current?.map((item) => (item.id === image.id ? { ...item, altText: value } : item)) ?? null);
-    } catch (err) {
-      setError(explain(err, 'Failed to update the alt text.'));
-    }
-  };
-
   const selected = images?.find((image) => image.selected) ?? null;
 
   return (
@@ -105,17 +110,22 @@ export function CoverImage({ projectId, draftId }: { projectId: string; draftId:
       <h3>Cover image</h3>
       <p className="muted">
         A generated image is a draft visual, not an editorially verified asset. Only the selected image is
-        published.
+        published. Previous images are preserved when you regenerate.
       </p>
       {error && (
         <p className="form-error" role="alert">
           {error}
         </p>
       )}
+      {notice && (
+        <p className="form-success" role="status">
+          {notice}
+        </p>
+      )}
 
       {selected && selected.status === 'ready' && (
         <figure>
-          {/* eslint-disable-next-line @next/next/no-img-element -- authenticated API asset */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- same-origin project-scoped API asset (no authentication) */}
           <img src={apiUrl(selected.url)} alt={selected.altText ?? 'Article cover image'} className="cover-preview" />
           <figcaption className="muted">Selected cover</figcaption>
         </figure>
@@ -156,37 +166,143 @@ export function CoverImage({ projectId, draftId }: { projectId: string; draftId:
       {images && images.length > 0 && (
         <ul className="run-list">
           {images.map((image) => (
-            <li key={image.id} className="run-item">
-              <div className="run-head">
-                <strong>
-                  {image.kind} · v{image.version}
-                </strong>
-                <span className="badge">{image.selected ? 'selected' : image.status}</span>
-              </div>
-              {image.prompt && <p className="muted">{image.prompt}</p>}
-              {image.error && <p className="status-error">{image.error}</p>}
-              <div className="field">
-                <label htmlFor={`alt-${image.id}`}>Alt text</label>
-                <input
-                  id={`alt-${image.id}`}
-                  className="input"
-                  value={image.altText ?? ''}
-                  onChange={(e) => void updateAlt(image, e.target.value)}
-                />
-              </div>
-              <button
-                type="button"
-                className="button cursor-pointer"
-                onClick={() => void markSelected(image)}
-                disabled={busy || image.selected || image.status !== 'ready'}
-              >
-                {image.selected ? 'Selected' : 'Use as cover'}
-              </button>
-            </li>
+            <ImageRow
+              key={`${image.id}:${image.updatedAt}`}
+              projectId={projectId}
+              draftId={draftId}
+              image={image}
+              busy={busy}
+              onReload={load}
+              onSelect={markSelected}
+              onError={setError}
+              onNotice={setNotice}
+            />
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+function ImageRow({
+  projectId,
+  draftId,
+  image,
+  busy,
+  onReload,
+  onSelect,
+  onError,
+  onNotice,
+}: {
+  projectId: string;
+  draftId: string;
+  image: ArticleImage;
+  busy: boolean;
+  onReload: () => Promise<void>;
+  onSelect: (image: ArticleImage) => Promise<void>;
+  onError: (message: string) => void;
+  onNotice: (message: string | null) => void;
+}) {
+  const [prompt, setPrompt] = useState(image.prompt ?? '');
+  const [alt, setAlt] = useState(image.altText ?? '');
+  const [working, setWorking] = useState(false);
+  const usage = usageSummary(image.usage);
+
+  const run = async (action: () => Promise<unknown>, fallback: string, done?: string) => {
+    setWorking(true);
+    onError('');
+    onNotice(null);
+    try {
+      await action();
+      await onReload();
+      if (done) onNotice(done);
+    } catch (err) {
+      onError(explain(err, fallback));
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const disabled = working || busy;
+
+  return (
+    <li className="run-item">
+      <div className="run-head">
+        <strong>
+          {image.kind} · v{image.version}
+        </strong>
+        <span className="badge">{image.selected ? 'selected' : image.status}</span>
+      </div>
+      <p className="muted">
+        {image.provider ? `${image.provider}${image.model ? ` / ${image.model}` : ''}` : 'uploaded'}
+        {image.width && image.height ? ` · ${image.width}×${image.height}` : ''}
+        {image.bytes ? ` · ${Math.round(image.bytes / 1024)} KB` : ''}
+        {usage ? ` · usage ${usage}` : ''}
+      </p>
+      {image.error && <p className="status-error">{image.error}</p>}
+      {image.kind === 'generated' && (
+        <div className="field">
+          <label htmlFor={`prompt-${image.id}`}>Visual prompt (editable)</label>
+          <textarea
+            id={`prompt-${image.id}`}
+            className="textarea"
+            rows={2}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+          />
+        </div>
+      )}
+      <div className="field">
+        <label htmlFor={`alt-${image.id}`}>Alt text</label>
+        <input
+          id={`alt-${image.id}`}
+          className="input"
+          value={alt}
+          onChange={(e) => setAlt(e.target.value)}
+          onBlur={() => {
+            if (alt !== (image.altText ?? '')) {
+              void run(() => updateImage(projectId, image.id, { altText: alt }), 'Failed to update the alt text.', 'Alt text saved.');
+            }
+          }}
+        />
+      </div>
+      <div className="form-actions">
+        {image.kind === 'generated' && (
+          <>
+            <button
+              type="button"
+              className="button cursor-pointer"
+              onClick={() => void run(() => updateImage(projectId, image.id, { prompt }), 'Failed to save the prompt.', 'Prompt saved.')}
+              disabled={disabled || prompt === (image.prompt ?? '')}
+            >
+              Save prompt
+            </button>
+            <button
+              type="button"
+              className="button cursor-pointer"
+              onClick={() =>
+                void run(
+                  () => generateImage(projectId, draftId, { prompt: prompt || undefined, altText: alt || undefined }),
+                  'Failed to regenerate the cover image.',
+                  'Regenerated. The previous image is kept.',
+                )
+              }
+              disabled={disabled}
+            >
+              Regenerate
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          className="button cursor-pointer"
+          onClick={() => void onSelect(image)}
+          disabled={disabled || image.selected || image.status !== 'ready'}
+        >
+          {image.selected ? 'Selected' : 'Use as cover'}
+        </button>
+      </div>
+    </li>
   );
 }
 
