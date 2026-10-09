@@ -37,9 +37,12 @@ architecture.
   - `src/modules/analysis` - website/competitor analysis: controller, service,
     an in-process runner, SSRF-safe bounded research (`research/`), and one AI
     provider behind an interface (`ai/`, DeepSeek via the OpenAI-compatible SDK).
-  - `src/modules/content` - project content workflow: topics, briefs, versioned
-    drafts, and their asynchronous generation runs.
-  - `src/modules/system` - global system status (analysis configuration).
+  - `src/modules/content` - project content workflow: topics, briefs (with
+    information-requirement answers), reusable project knowledge, versioned
+    drafts, article cover images (upload/generation with a separate provider),
+    and their asynchronous generation runs.
+  - `src/modules/system` - global system status (analysis, research, and image
+    provider configuration).
   - `src/modules/health` - health domain module.
   - `src/database` - Prisma infrastructure (`DatabaseModule`, `PrismaService`).
   - `src/config` - configuration infrastructure (`AppConfigModule`).

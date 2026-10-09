@@ -10,6 +10,28 @@ export type TopicStatus = (typeof TOPIC_STATUSES)[number];
 export const TOPIC_PRIORITIES = ['primary', 'secondary', 'supporting'] as const;
 export type TopicPriority = (typeof TOPIC_PRIORITIES)[number];
 
+export const REQUIREMENT_STATES = ['unanswered', 'answered', 'unknown', 'exclude'] as const;
+export type RequirementState = (typeof REQUIREMENT_STATES)[number];
+
+/** A "needed before writing" requirement and the user's answer. */
+export interface TopicRequirement {
+  id: string;
+  question: string;
+  answer: string | null;
+  sourceUrl: string | null;
+  state: RequirementState;
+}
+
+export interface ProjectKnowledgeView {
+  id: string;
+  projectId: string;
+  text: string;
+  originQuestion: string | null;
+  originTopicId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ContentSettingsSnapshot {
   websiteUrl: string | null;
   businessContext: string | null;
@@ -36,6 +58,7 @@ export interface BriefSnapshot {
   destinationUrl: string | null;
   sources: SourceRef[];
   confirmations: string[];
+  answers: TopicRequirement[];
 }
 
 export interface TopicView {
@@ -54,6 +77,7 @@ export interface TopicView {
   origin: string;
   status: TopicStatus;
   sources: SourceRef[];
+  requirements: TopicRequirement[];
   createdAt: string;
   updatedAt: string;
 }
@@ -71,6 +95,7 @@ export interface BriefView {
   destinationUrl: string | null;
   sources: SourceRef[];
   confirmations: string[];
+  answers: TopicRequirement[];
   createdAt: string;
   updatedAt: string;
 }
@@ -93,6 +118,8 @@ export interface DraftView {
   unresolvedClaims: string[];
   generationRunId: string | null;
   savedAt: string | null;
+  /** True when the brief or topic answers changed after this draft was generated. */
+  stale: boolean;
   createdAt: string;
   updatedAt: string;
 }

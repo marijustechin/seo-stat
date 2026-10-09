@@ -37,6 +37,7 @@ interface ArticleSnapshot {
   settings: ContentSettingsSnapshot;
   brief: BriefSnapshot;
   research: AnalysisInputSnapshot;
+  knowledge?: string[];
 }
 
 function normalizeTitle(value: string): string {
@@ -131,7 +132,14 @@ export class ContentRunner implements OnModuleInit {
           angle: suggestion.angle,
           callToAction: suggestion.callToAction,
           relevance: suggestion.relevance,
-          informationNeeded: suggestion.informationNeeded,
+          informationNeeded: suggestion.informationRequirements.join('\n') || suggestion.informationNeeded,
+          requirements: suggestion.informationRequirements.map((question, index) => ({
+            id: `req-${index}`,
+            question,
+            answer: null,
+            sourceUrl: null,
+            state: 'unanswered',
+          })) as unknown as Prisma.InputJsonValue,
           objectiveAlignment: suggestion.objectiveAlignment,
           priority: suggestion.priority,
           origin: 'generated',
@@ -151,7 +159,7 @@ export class ContentRunner implements OnModuleInit {
     const resolvedTopicId = run.topicId ?? '';
     const snapshot = run.inputSnapshot as unknown as ArticleSnapshot;
     const research = await this.research.collect(snapshot.research);
-    const { system, user } = buildArticlePrompt(snapshot.settings, snapshot.brief, research);
+    const { system, user } = buildArticlePrompt(snapshot.settings, snapshot.brief, research, snapshot.knowledge ?? []);
     const model = await this.provider.analyze({
       system,
       user,

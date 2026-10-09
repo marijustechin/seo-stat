@@ -8,11 +8,13 @@ website publishing, LinkedIn publishing, and Google performance reporting.
 A project-first application plus an unattended deployment pipeline. There is a
 TypeScript ESM pnpm workspace with a Next.js UI and a NestJS API; projects are
 persisted in PostgreSQL, can be configured from a bounded website/competitor
-analysis, and support a first content workflow (topic suggestions, editable
-briefs, and versioned article drafts). CI produces a deployment artifact consumed by a server-side systemd
-user timer, so the app at https://192.168.8.50/seo-stat/ updates automatically
-from successful `main` builds. **No scheduling, generation, publishing,
-reporting, integrations, or aggregate costs** exist yet.
+analysis, and support a content workflow (topic suggestions, editable briefs,
+answerable information requirements, reusable project knowledge, and versioned
+article drafts with optional cover images). CI produces a deployment artifact
+consumed by a server-side systemd user timer, so the app at
+https://192.168.8.50/seo-stat/ updates automatically from successful `main`
+builds. **No scheduling, external publishing, reporting, integrations, or
+aggregate costs** exist yet.
 
 - Public UI URL: https://192.168.8.50/seo-stat/
 - API prefix: `/seo-stat/api/` (same origin)

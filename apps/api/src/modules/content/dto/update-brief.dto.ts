@@ -44,4 +44,8 @@ export class UpdateBriefDto {
   @IsOptional()
   @IsArray()
   confirmations?: string[];
+
+  @IsOptional()
+  @IsArray()
+  answers?: Array<{ id?: string; question: string; answer?: string | null; sourceUrl?: string | null; state?: string }>;
 }

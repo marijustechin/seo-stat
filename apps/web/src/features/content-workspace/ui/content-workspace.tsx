@@ -1,21 +1,32 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  createKnowledge,
   createTopic,
+  deleteKnowledge,
   dismissTopic,
   generateDraft,
   generateTopics,
   getBrief,
   listContentRuns,
   listDrafts,
+  listKnowledge,
   listTopics,
   saveBrief,
   updateTopic,
 } from '@/entities/content/api';
-import type { ArticleDraft, ContentRun, ContentTopic, TopicBrief } from '@/entities/content/model';
+import type {
+  ArticleDraft,
+  ContentRun,
+  ContentTopic,
+  ProjectKnowledge,
+  TopicBrief,
+  TopicRequirement,
+} from '@/entities/content/model';
 import { ApiError } from '@/shared/api/client';
 import { useProject } from '@/widgets/project-workspace/project-context';
+import { AnswersEditor } from './answers-editor';
 import { DraftEditor } from './draft-editor';
 
 interface BriefForm {
@@ -45,17 +56,23 @@ export function ContentWorkspace() {
   const [briefError, setBriefError] = useState<string | null>(null);
   const [editingTopic, setEditingTopic] = useState<ContentTopic | null>(null);
   const [openDraftId, setOpenDraftId] = useState<string | null>(null);
+  const [briefAnswers, setBriefAnswers] = useState<TopicRequirement[]>([]);
+  const [knowledge, setKnowledge] = useState<ProjectKnowledge[]>([]);
+  const briefRef = useRef<HTMLElement | null>(null);
+  const briefDirty = useRef(false);
 
   const load = useCallback(async () => {
     try {
-      const [topicList, draftList, runList] = await Promise.all([
+      const [topicList, draftList, runList, knowledgeList] = await Promise.all([
         listTopics(project.id),
         listDrafts(project.id),
         listContentRuns(project.id),
+        listKnowledge(project.id),
       ]);
       setTopics(topicList);
       setDrafts(draftList);
       setRuns(runList);
+      setKnowledge(knowledgeList);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load content.');
@@ -126,6 +143,7 @@ export function ContentWorkspace() {
         audience: editingTopic.audience,
         objective: editingTopic.objective,
         angle: editingTopic.angle,
+        requirements: editingTopic.requirements,
       });
       setEditingTopic(null);
       await load();
@@ -153,9 +171,11 @@ export function ContentWorkspace() {
     setSelectedTopic(topic);
     setBriefError(null);
     setOpenDraftId(null);
+    briefDirty.current = false;
     try {
       const existing = await getBrief(project.id, topic.id);
       setBrief(toBriefForm(existing));
+      setBriefAnswers(existing.answers.length > 0 ? existing.answers : topic.requirements);
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
         // Prefill from the topic and saved project context; saved on first Save.
@@ -169,9 +189,50 @@ export function ContentWorkspace() {
           destinationUrl: '',
           confirmations: topic.informationNeeded ?? '',
         });
+        setBriefAnswers(topic.requirements);
       } else {
         setBriefError('Failed to load the brief.');
       }
+    }
+    requestAnimationFrame(() => {
+      briefRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const confirmDiscardTopics = (next: () => void) => {
+    if (briefDirty.current && !window.confirm('You have unsaved brief changes. Discard them and continue?')) {
+      return;
+    }
+    briefDirty.current = false;
+    next();
+  };
+
+  const keepKnowledge = async (requirement: TopicRequirement, topicId: string | null) => {
+    if (!requirement.answer) return;
+    setBusy(true);
+    try {
+      await createKnowledge(project.id, {
+        text: requirement.answer,
+        originQuestion: requirement.question,
+        originTopicId: topicId,
+      });
+      await load();
+    } catch (err) {
+      setError(runError(err, 'Failed to save project knowledge.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeKnowledge = async (item: ProjectKnowledge) => {
+    setBusy(true);
+    try {
+      await deleteKnowledge(project.id, item.id);
+      await load();
+    } catch (err) {
+      setError(runError(err, 'Failed to delete project knowledge.'));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -189,8 +250,11 @@ export function ContentWorkspace() {
         callToAction: brief.callToAction,
         destinationUrl: brief.destinationUrl,
         confirmations: brief.confirmations.split('\n').map((line) => line.trim()).filter(Boolean),
+        answers: briefAnswers,
       });
       setBrief(toBriefForm(saved));
+      setBriefAnswers(saved.answers);
+      briefDirty.current = false;
     } catch (err) {
       setBriefError(runError(err, 'Failed to save the brief.'));
     } finally {
@@ -303,6 +367,11 @@ export function ContentWorkspace() {
                       <label htmlFor={`edit-angle-${topic.id}`}>Angle</label>
                       <input id={`edit-angle-${topic.id}`} className="input" value={editingTopic.angle} onChange={(e) => setEditingTopic({ ...editingTopic, angle: e.target.value })} />
                     </div>
+                    <AnswersEditor
+                      requirements={editingTopic.requirements}
+                      onChange={(requirements) => setEditingTopic({ ...editingTopic, requirements })}
+                      onKeepKnowledge={(requirement) => void keepKnowledge(requirement, editingTopic.id)}
+                    />
                     <div className="form-actions">
                       <button type="button" className="button cursor-pointer" onClick={saveTopicEdit} disabled={busy}>
                         Save
@@ -338,7 +407,16 @@ export function ContentWorkspace() {
                         <dd>{topic.callToAction}</dd>
                       </div>
                     )}
-                    {topic.informationNeeded && (
+                    {topic.requirements.length > 0 && (
+                      <div>
+                        <dt>Needed before writing</dt>
+                        <dd>
+                          {topic.requirements.filter((item) => item.state === 'answered').length}/
+                          {topic.requirements.length} answered
+                        </dd>
+                      </div>
+                    )}
+                    {topic.requirements.length === 0 && topic.informationNeeded && (
                       <div>
                         <dt>Needed before writing</dt>
                         <dd>{topic.informationNeeded}</dd>
@@ -347,10 +425,18 @@ export function ContentWorkspace() {
                   </dl>
                 )}
                 <div className="form-actions">
-                  <button type="button" className="button cursor-pointer" onClick={() => void selectTopic(topic)}>
-                    Use topic
+                  <button
+                    type="button"
+                    className="button cursor-pointer"
+                    onClick={() => confirmDiscardTopics(() => void selectTopic(topic))}
+                  >
+                    Prepare article brief
                   </button>
-                  <button type="button" className="button cursor-pointer" onClick={() => setEditingTopic(topic)}>
+                  <button
+                    type="button"
+                    className="button cursor-pointer"
+                    onClick={() => confirmDiscardTopics(() => setEditingTopic(topic))}
+                  >
                     Edit
                   </button>
                   <button type="button" className="button cursor-pointer" onClick={() => void dismiss(topic)} disabled={busy}>
@@ -364,7 +450,13 @@ export function ContentWorkspace() {
       </section>
 
       {selectedTopic && brief && (
-        <section className="card">
+        <section
+          className="card"
+          ref={briefRef}
+          onInput={() => {
+            briefDirty.current = true;
+          }}
+        >
           <h2>Brief — {selectedTopic.title}</h2>
           <p className="muted">Prefilled from the topic and saved project context. Generation starts only when you choose it.</p>
           {briefError && (
@@ -405,6 +497,14 @@ export function ContentWorkspace() {
             <textarea id="brief-confirmations" className="textarea" rows={3} value={brief.confirmations} onChange={(e) => setBrief({ ...brief, confirmations: e.target.value })} />
             <p className="help">Unknown operational details stay unknown; they are not treated as established facts.</p>
           </div>
+          <AnswersEditor
+            requirements={briefAnswers}
+            onChange={(next) => {
+              briefDirty.current = true;
+              setBriefAnswers(next);
+            }}
+            onKeepKnowledge={(requirement) => void keepKnowledge(requirement, selectedTopic.id)}
+          />
           {selectedTopic.sources.length > 0 && (
             <div className="field">
               <span>Relevant sources</span>
@@ -432,9 +532,41 @@ export function ContentWorkspace() {
       )}
 
       <section className="card">
+        <h2>Project knowledge</h2>
+        <p className="muted">
+          Reusable facts kept from your answers. Ignored answers are never included; unknown facts stay
+          unknown.
+        </p>
+        {knowledge.length === 0 && <p className="muted">No reusable knowledge yet.</p>}
+        {knowledge.length > 0 && (
+          <ul className="run-list">
+            {knowledge.map((item) => (
+              <li key={item.id} className="run-item">
+                {item.originQuestion && <p className="muted">From: {item.originQuestion}</p>}
+                <p>{item.text}</p>
+                <button
+                  type="button"
+                  className="button cursor-pointer"
+                  onClick={() => void removeKnowledge(item)}
+                  disabled={busy}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="card">
         <h2>Drafts</h2>
         {drafts === null && <p role="status" className="muted">Loading drafts…</p>}
         {drafts && drafts.length === 0 && <p className="muted">No drafts yet.</p>}
+        {drafts && drafts.some((draft) => draft.stale) && (
+          <p className="muted" role="status">
+            A draft was generated from an earlier brief. Regenerate to include the latest answers and outline.
+          </p>
+        )}
         {drafts && drafts.length > 0 && (
           <ul className="run-list">
             {drafts.map((draft) => (
@@ -443,7 +575,10 @@ export function ContentWorkspace() {
                   <strong>
                     v{draft.version} · {draft.title ?? '(untitled)'}
                   </strong>
-                  <span className="badge">{draft.status === 'ready_for_review' ? 'ready for review' : 'draft'}</span>
+                  <span>
+                    {draft.stale && <span className="badge badge-active">brief changed since generation</span>}{' '}
+                    <span className="badge">{draft.status === 'ready_for_review' ? 'ready for review' : 'draft'}</span>
+                  </span>
                 </div>
                 <p className="muted">
                   Updated {new Date(draft.updatedAt).toLocaleString()}

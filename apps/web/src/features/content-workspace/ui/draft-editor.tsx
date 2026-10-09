@@ -5,6 +5,7 @@ import { markDraftReady, saveDraft } from '@/entities/content/api';
 import type { ArticleDraft } from '@/entities/content/model';
 import { ApiError } from '@/shared/api/client';
 import { renderMarkdown } from '@/shared/lib/markdown';
+import { CoverImage } from './cover-image';
 
 function linesToList(value: string): string[] {
   return value
@@ -177,6 +178,8 @@ export function DraftEditor({
           </ul>
         </div>
       )}
+
+      <CoverImage projectId={projectId} draftId={draft.id} />
 
       <div className="form-actions">
         <button type="button" className="button cursor-pointer" onClick={save} disabled={saving}>

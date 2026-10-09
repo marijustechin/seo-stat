@@ -61,6 +61,22 @@ export function SystemStatusCard() {
               Firecrawl is not configured; the direct fetch backend is used to acquire content.
             </p>
           )}
+
+          <h3>Cover image provider</h3>
+          <p>
+            Provider: <strong>{state.status.image.provider}</strong> · model{' '}
+            <strong>{state.status.image.model}</strong>
+          </p>
+          {state.status.image.configured ? (
+            <p className="status-ok" role="status">
+              Image generation is configured. Covers can be generated; uploads always work.
+            </p>
+          ) : (
+            <p role="status">
+              Image generation is not configured, so covers can only be uploaded. An administrator can
+              set IMAGE_API_KEY on the server.
+            </p>
+          )}
         </>
       )}
     </section>

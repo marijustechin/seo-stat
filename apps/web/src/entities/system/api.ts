@@ -11,6 +11,11 @@ export interface SystemStatus {
       firecrawl: { configured: boolean };
     };
   };
+  image: {
+    provider: string;
+    model: string;
+    configured: boolean;
+  };
 }
 
 export function getSystemStatus(): Promise<SystemStatus> {

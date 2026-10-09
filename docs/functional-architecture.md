@@ -145,6 +145,45 @@ select a topic, review/edit a brief, generate an article draft, and edit/review 
   in Run history distinct from analyses. Archived projects keep content history
   but reject new generation and editing.
 
+## Content information requirements, answers, and knowledge (implemented, TASK-0008)
+
+- A topic carries **information requirements**: the questions that must be
+  answered before writing. Each requirement has a stable id, the question text,
+  an optional answer and source reference, and a state:
+  `unanswered`, `answered`, `unknown`, or `exclude`.
+- Users answer requirements in the topic editor and in the brief. Answers are
+  saved per topic and per brief and are included in the article generation
+  snapshot. `unknown` is rendered to the model as "do not invent an answer", and
+  `exclude` means the claim must not appear; neither is treated as established
+  fact, and answers are treated as user-provided information rather than
+  independently verified website evidence.
+- Switching topics preserves each topic's answers and never copies one topic's
+  answers onto another. An unsaved brief edit is protected by a discard
+  confirmation before switching.
+- An answered requirement can be **kept as reusable project knowledge**: a
+  project-scoped note (with its originating question) that is included in later
+  article prompts. Knowledge can be listed, edited, and removed.
+- Two UI changes make the workflow clearer: "Use topic" is renamed
+  "Prepare article brief" (it only prepares and scrolls to the brief; generation
+  still requires an explicit action), and a draft generated from an earlier brief
+  is flagged **stale** ("brief changed since generation") so the user can
+  regenerate.
+
+## Article cover images (implemented, TASK-0009)
+
+- A draft can have cover images: generated from a visual brief or uploaded
+  (PNG/JPEG/WebP, size-limited). Each image records kind, status, prompt, alt
+  text, provider/model, dimensions, bytes, and selected state.
+- Images are project- and draft-scoped and isolated between projects. Files are
+  stored outside the release directory (`CONTENT_ASSET_DIR`) and served only
+  through the authenticated project route; the stored path is treated as a
+  basename to prevent traversal. Archived projects cannot change images.
+- Only the **selected** image is the intended cover; a generated image is a draft
+  visual, not an editorially verified asset. Image generation is a separate
+  capability with its own credential: when unconfigured, the API returns 503, the
+  UI shows an unavailable state, and uploads still work. The System page reports
+  the image provider configuration separately.
+
 ## Review policy semantics
 
 - Manually requested public website research may execute without another
@@ -155,7 +194,6 @@ select a topic, review/edit a brief, generate an article draft, and edit/review 
 
 ## Planned capabilities (not implemented)
 
-- Content research and generation.
 - Workflow definitions, schedules, and execution history.
 - External integrations and credentials.
 - Metrics, reports, and aggregate costs.

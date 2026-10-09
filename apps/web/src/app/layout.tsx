@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </header>
         <main className="container">{children}</main>
         <footer className="site-footer">
-          Scheduling and content generation are not implemented yet.
+          Scheduling and external publishing are not implemented yet.
         </footer>
       </body>
     </html>

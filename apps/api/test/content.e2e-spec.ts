@@ -1,6 +1,9 @@
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import type { FastifyInstance } from 'fastify';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/bootstrap/configure-app.js';
@@ -13,6 +16,11 @@ import {
 } from '../src/modules/analysis/ai/ai-provider.js';
 import { AnalysisResearch } from '../src/modules/analysis/research/research.port.js';
 import { ContentRunner } from '../src/modules/content/content.runner.js';
+import { ImageProvider } from '../src/modules/content/image.provider.js';
+
+// A 1x1 PNG (valid signature + IHDR), used to exercise upload and generation paths.
+const PNG_1X1 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
 function topicSuggestion(index: number) {
   return {
@@ -24,6 +32,7 @@ function topicSuggestion(index: number) {
     callToAction: 'Act',
     relevance: 'Relevant',
     informationNeeded: 'Confirm coverage',
+    informationRequirements: ['Confirm coverage', 'What result does the client expect?'],
     objectiveAlignment: 'Serves the stated objective',
     priority: index === 1 ? 'primary' : 'secondary',
     sources: [{ url: 'https://example.com', note: 'home', retrievedAt: '2026-01-01T00:00:00.000Z' }],
@@ -78,15 +87,33 @@ class StubResearch extends AnalysisResearch {
   }
 }
 
+class StubImageProvider extends ImageProvider {
+  readonly providerId = 'stub-image';
+  readonly model = 'stub-image-model';
+  configured = false;
+  calls = 0;
+
+  isConfigured(): boolean {
+    return this.configured;
+  }
+
+  async generate() {
+    this.calls += 1;
+    return { base64: PNG_1X1, mimeType: 'image/png', usage: { stub: true } };
+  }
+}
+
 describe('Content (integration, mocked provider)', () => {
   let app: NestFastifyApplication;
   let server: FastifyInstance;
   let prisma: PrismaService;
   let runner: ContentRunner;
   const provider = new StubProvider();
+  const imageProvider = new StubImageProvider();
   const created: string[] = [];
+  let assetDir: string;
 
-  const call = (method: 'GET' | 'POST' | 'PATCH' | 'PUT', url: string, payload?: Record<string, unknown>) =>
+  const call = (method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE', url: string, payload?: Record<string, unknown>) =>
     server.inject({ method, url: `/seo-stat/api${url}`, ...(payload ? { payload } : {}) });
 
   const createProject = async (name: string): Promise<string> => {
@@ -115,11 +142,15 @@ describe('Content (integration, mocked provider)', () => {
   };
 
   beforeAll(async () => {
+    assetDir = await mkdtemp(join(tmpdir(), 'seo-stat-images-'));
+    process.env.CONTENT_ASSET_DIR = assetDir;
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(AnalysisProvider)
       .useValue(provider)
       .overrideProvider(AnalysisResearch)
       .useValue(new StubResearch())
+      .overrideProvider(ImageProvider)
+      .useValue(imageProvider)
       .compile();
     app = moduleRef.createNestApplication<NestFastifyApplication>(
       new FastifyAdapter({ routerOptions: { ignoreTrailingSlash: true } }),
@@ -135,6 +166,7 @@ describe('Content (integration, mocked provider)', () => {
   afterAll(async () => {
     if (created.length > 0) await prisma.project.deleteMany({ where: { id: { in: created } } });
     await app.close();
+    await rm(assetDir, { recursive: true, force: true });
   });
 
   it('generates topics from saved settings and prevents duplicate starts', async () => {
@@ -316,5 +348,180 @@ describe('Content (integration, mocked provider)', () => {
     const list = await call('GET', `/projects/${projectId}/content/topics`);
     expect(list.statusCode).toBe(200);
     expect(list.json().length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('round-trips topic requirements and brief answers into the article snapshot', async () => {
+    const projectId = await createProject('Content Answers');
+    const topic = (await call('POST', `/projects/${projectId}/content/topics`, {
+      title: 'Answers topic',
+      audience: 'A',
+      objective: 'O',
+      angle: 'Angle',
+    })).json();
+
+    const requirements = [
+      { id: 'r1', question: 'Can you collect batteries?', answer: 'Yes, on request.', sourceUrl: 'https://example.com/batteries', state: 'answered' },
+      { id: 'r2', question: 'What is the exact tonnage?', answer: null, sourceUrl: null, state: 'unknown' },
+      { id: 'r3', question: 'Are you ISO certified?', answer: null, sourceUrl: null, state: 'exclude' },
+    ];
+    const edited = await call('PATCH', `/projects/${projectId}/content/topics/${topic.id}`, { requirements });
+    expect(edited.statusCode).toBe(200);
+    expect(edited.json().requirements).toHaveLength(3);
+    expect(edited.json().requirements[0].answer).toBe('Yes, on request.');
+    expect(edited.json().requirements[2].state).toBe('exclude');
+
+    const brief = await call('PUT', `/projects/${projectId}/content/topics/${topic.id}/brief`, { answers: requirements });
+    expect(brief.statusCode).toBe(200);
+    expect(brief.json().answers).toHaveLength(3);
+    expect(brief.json().answers[1].state).toBe('unknown');
+
+    const reread = (await call('GET', `/projects/${projectId}/content/topics/${topic.id}/brief`)).json();
+    expect(reread.answers[2].state).toBe('exclude');
+
+    const started = await call('POST', `/projects/${projectId}/content/topics/${topic.id}/draft`);
+    const snapshot = started.json().inputSnapshot.brief.answers as Array<{ id: string; state: string }>;
+    expect(snapshot).toHaveLength(3);
+    expect(snapshot.find((item) => item.id === 'r3')?.state).toBe('exclude');
+    await waitForRun(projectId, started.json().id as string);
+  });
+
+  it('keeps each topic answers when switching topics', async () => {
+    const projectId = await createProject('Content Switch');
+    const a = (await call('POST', `/projects/${projectId}/content/topics`, {
+      title: 'Switch A', audience: 'A', objective: 'O', angle: 'Angle',
+    })).json();
+    const b = (await call('POST', `/projects/${projectId}/content/topics`, {
+      title: 'Switch B', audience: 'A', objective: 'O', angle: 'Angle',
+    })).json();
+
+    await call('PUT', `/projects/${projectId}/content/topics/${a.id}/brief`, {
+      answers: [{ id: 'a1', question: 'Q', answer: 'Answer only for A', state: 'answered' }],
+    });
+    const missingBrief = await call('GET', `/projects/${projectId}/content/topics/${b.id}/brief`);
+    expect(missingBrief.statusCode).toBe(404);
+
+    const briefA = (await call('GET', `/projects/${projectId}/content/topics/${a.id}/brief`)).json();
+    expect(briefA.answers).toHaveLength(1);
+    expect(briefA.answers[0].answer).toBe('Answer only for A');
+  });
+
+  it('manages reusable project knowledge and includes it in the article snapshot', async () => {
+    const projectId = await createProject('Content Knowledge');
+    const topic = (await call('POST', `/projects/${projectId}/content/topics`, {
+      title: 'Knowledge topic', audience: 'A', objective: 'O', angle: 'Angle',
+    })).json();
+
+    const created = await call('POST', `/projects/${projectId}/content/knowledge`, {
+      text: 'We operate 7 days a week.',
+      originQuestion: 'Opening hours?',
+      originTopicId: topic.id,
+    });
+    expect(created.statusCode).toBe(201);
+    const knowledgeId = created.json().id as string;
+
+    const list = (await call('GET', `/projects/${projectId}/content/knowledge`)).json();
+    expect(list).toHaveLength(1);
+    expect(list[0].text).toBe('We operate 7 days a week.');
+
+    const started = await call('POST', `/projects/${projectId}/content/topics/${topic.id}/draft`);
+    expect(started.json().inputSnapshot.knowledge).toContain('We operate 7 days a week.');
+    await waitForRun(projectId, started.json().id as string);
+
+    const updated = await call('PATCH', `/projects/${projectId}/content/knowledge/${knowledgeId}`, { text: 'Updated note.' });
+    expect(updated.json().text).toBe('Updated note.');
+
+    const removed = await call('DELETE', `/projects/${projectId}/content/knowledge/${knowledgeId}`);
+    expect(removed.statusCode).toBe(200);
+    expect((await call('GET', `/projects/${projectId}/content/knowledge`)).json()).toHaveLength(0);
+  });
+
+  it('flags drafts as stale after the brief answers change', async () => {
+    const projectId = await createProject('Content Stale Answers');
+    const topic = (await call('POST', `/projects/${projectId}/content/topics`, {
+      title: 'Stale topic', audience: 'A', objective: 'O', angle: 'Angle',
+    })).json();
+
+    await call('PUT', `/projects/${projectId}/content/topics/${topic.id}/brief`, {
+      answers: [{ id: 's1', question: 'Q', answer: 'Original', state: 'answered' }],
+    });
+    const first = await waitForRun(projectId, (await call('POST', `/projects/${projectId}/content/topics/${topic.id}/draft`)).json().id);
+    const firstDraftId = (first.result as { draftId: string }).draftId;
+
+    let drafts = (await call('GET', `/projects/${projectId}/content/drafts`)).json() as Array<{ id: string; stale: boolean }>;
+    expect(drafts.find((draft) => draft.id === firstDraftId)?.stale).toBe(false);
+
+    await call('PUT', `/projects/${projectId}/content/topics/${topic.id}/brief`, {
+      answers: [{ id: 's1', question: 'Q', answer: 'Changed', state: 'answered' }],
+    });
+    drafts = (await call('GET', `/projects/${projectId}/content/drafts`)).json() as Array<{ id: string; stale: boolean }>;
+    expect(drafts.find((draft) => draft.id === firstDraftId)?.stale).toBe(true);
+
+    const regenerated = await waitForRun(projectId, (await call('POST', `/projects/${projectId}/content/topics/${topic.id}/draft`)).json().id);
+    const regeneratedId = (regenerated.result as { draftId: string }).draftId;
+    drafts = (await call('GET', `/projects/${projectId}/content/drafts`)).json() as Array<{ id: string; stale: boolean }>;
+    expect(drafts.find((draft) => draft.id === regeneratedId)?.stale).toBe(false);
+  });
+
+  it('manages cover images: upload, alt, select, serve, isolation, archived state', async () => {
+    const projectId = await createProject('Content Images');
+    const topic = (await call('POST', `/projects/${projectId}/content/topics`, {
+      title: 'Image topic', audience: 'A', objective: 'O', angle: 'Angle',
+    })).json();
+    const run = await waitForRun(projectId, (await call('POST', `/projects/${projectId}/content/topics/${topic.id}/draft`)).json().id);
+    const draftId = (run.result as { draftId: string }).draftId;
+
+    imageProvider.configured = false;
+    expect(
+      (await call('POST', `/projects/${projectId}/content/drafts/${draftId}/images/generate`, { prompt: 'x' })).statusCode,
+    ).toBe(503);
+
+    const uploaded = await call('POST', `/projects/${projectId}/content/drafts/${draftId}/images/upload`, {
+      dataBase64: PNG_1X1,
+      fileName: 'cover.png',
+      mimeType: 'image/png',
+      altText: 'A cover',
+    });
+    expect(uploaded.statusCode).toBe(201);
+    const image = uploaded.json();
+    expect(image.kind).toBe('uploaded');
+    expect(image.status).toBe('ready');
+    expect(image.width).toBe(1);
+    expect(image.bytes).toBeGreaterThan(0);
+
+    const list = (await call('GET', `/projects/${projectId}/content/drafts/${draftId}/images`)).json() as Array<{ id: string; selected: boolean }>;
+    expect(list).toHaveLength(1);
+
+    await call('POST', `/projects/${projectId}/content/images/${image.id}/select`);
+    const selected = (await call('GET', `/projects/${projectId}/content/drafts/${draftId}/images`)).json() as Array<{ id: string; selected: boolean }>;
+    expect(selected.find((item) => item.id === image.id)?.selected).toBe(true);
+
+    const patched = await call('PATCH', `/projects/${projectId}/content/images/${image.id}`, { altText: 'Updated alt' });
+    expect(patched.json().altText).toBe('Updated alt');
+
+    const file = await call('GET', `/projects/${projectId}/content/images/${image.id}/file`);
+    expect(file.statusCode).toBe(200);
+    expect(String(file.headers['content-type'])).toContain('image/png');
+    expect(file.rawPayload.length).toBeGreaterThan(0);
+
+    const other = await createProject('Content Images Other');
+    expect((await call('GET', `/projects/${other}/content/images/${image.id}/file`)).statusCode).toBe(404);
+
+    imageProvider.configured = true;
+    const generated = await call('POST', `/projects/${projectId}/content/drafts/${draftId}/images/generate`, {
+      prompt: 'A conceptual illustration',
+      altText: 'Generated cover',
+    });
+    expect(generated.statusCode).toBe(201);
+    expect(generated.json().kind).toBe('generated');
+    imageProvider.configured = false;
+
+    await call('POST', `/projects/${projectId}/archive`);
+    expect(
+      (await call('POST', `/projects/${projectId}/content/drafts/${draftId}/images/upload`, {
+        dataBase64: PNG_1X1,
+        fileName: 'x.png',
+        mimeType: 'image/png',
+      })).statusCode,
+    ).toBe(400);
   });
 });

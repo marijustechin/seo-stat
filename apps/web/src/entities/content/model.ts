@@ -4,6 +4,48 @@ export interface SourceRef {
   retrievedAt?: string;
 }
 
+export interface TopicRequirement {
+  id: string;
+  question: string;
+  answer: string | null;
+  sourceUrl: string | null;
+  state: 'unanswered' | 'answered' | 'unknown' | 'exclude';
+}
+
+export interface ProjectKnowledge {
+  id: string;
+  projectId: string;
+  text: string;
+  originQuestion: string | null;
+  originTopicId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ArticleImage {
+  id: string;
+  projectId: string;
+  draftId: string | null;
+  version: number;
+  kind: 'generated' | 'uploaded';
+  status: 'ready' | 'failed' | 'unavailable';
+  prompt: string | null;
+  altText: string | null;
+  provider: string | null;
+  model: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  width: number | null;
+  height: number | null;
+  bytes: number | null;
+  usage: unknown;
+  selected: boolean;
+  error: string | null;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ContentTopic {
   id: string;
   projectId: string;
@@ -20,6 +62,7 @@ export interface ContentTopic {
   origin: string;
   status: 'suggested' | 'selected' | 'dismissed';
   sources: SourceRef[];
+  requirements: TopicRequirement[];
   createdAt: string;
   updatedAt: string;
 }
@@ -37,6 +80,7 @@ export interface TopicBrief {
   destinationUrl: string | null;
   sources: SourceRef[];
   confirmations: string[];
+  answers: TopicRequirement[];
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +103,7 @@ export interface ArticleDraft {
   unresolvedClaims: string[];
   generationRunId: string | null;
   savedAt: string | null;
+  stale: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -95,6 +140,7 @@ export interface TopicInput {
   informationNeeded?: string | null;
   objectiveAlignment?: string | null;
   priority?: 'primary' | 'secondary' | 'supporting';
+  requirements?: TopicRequirement[];
 }
 
 export interface BriefInput {
@@ -107,6 +153,7 @@ export interface BriefInput {
   destinationUrl?: string | null;
   sources?: SourceRef[];
   confirmations?: string[];
+  answers?: TopicRequirement[];
 }
 
 export interface DraftInput {

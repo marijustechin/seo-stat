@@ -43,12 +43,19 @@ project management, system settings, and aggregate costs. See
 - Content workflow: business-driven topic suggestions, an editable brief, and
   versioned, editable article drafts with Markdown editing, safe preview,
   sources and unresolved claims, and a "ready for review" state (not
-  publication).
+  publication). Topics and briefs carry information requirements that users
+  answer (answered/unknown/exclude); an answer can be kept as reusable project
+  knowledge included in later drafts, and drafts generated from an earlier brief
+  are flagged stale.
+- Article cover images per draft: generate from a visual brief (when an image
+  provider is configured) or upload; selected image, alt text, and safe
+  authenticated serving.
 - Database-backed API health endpoint at `/seo-stat/api/health`.
 - Subpath routing, a development proxy, and automatic deployment.
 
-Scheduling, generation, publishing, reporting, integrations, and aggregate costs
-are **not** implemented. Only Overview and Settings contain real functionality.
+Scheduling, external publishing, reporting, integrations, and aggregate costs
+are **not** implemented. Overview, Settings, and Content contain real
+functionality.
 
 ## Intended workflows (proposed)
 

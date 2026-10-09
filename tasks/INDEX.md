@@ -9,3 +9,5 @@
 | [TASK-0005](TASK-0005-website-competitor-analysis.md) | Project website and competitor analysis with reviewable suggestions | completed |
 | [TASK-0006](TASK-0006-branding-icons.md) | Branding icons and web manifest under /seo-stat/ | completed |
 | [TASK-0007](TASK-0007-content-topics-drafts.md) | Project content topics and the first reviewable article draft | completed |
+| [TASK-0008](TASK-0008-content-answers-knowledge.md) | Content information requirements, answers, and reusable knowledge | completed |
+| [TASK-0009](TASK-0009-article-cover-images.md) | Article cover images (generate or upload) | completed |

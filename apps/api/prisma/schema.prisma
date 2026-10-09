@@ -37,6 +37,8 @@ model Project {
   briefs           ArticleBrief[]
   drafts           ArticleDraft[]
   contentRuns      ContentRun[]
+  knowledge        ProjectKnowledge[]
+  images           ArticleImage[]
 
   @@index([status])
   @@map("projects")
@@ -86,6 +88,7 @@ model ContentTopic {
   informationNeeded String?      @map("information_needed")
   objectiveAlignment String?     @map("objective_alignment")
   priority          String       @default("supporting")
+  requirements      Json?
   origin            String       @default("generated")
   status            String       @default("suggested")
   sources           Json?
@@ -115,6 +118,7 @@ model ArticleBrief {
   destinationUrl  String?      @map("destination_url")
   sources         Json?
   confirmations   Json?
+  answers         Json?
   settingsSnapshot Json?       @map("settings_snapshot")
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
@@ -148,13 +152,61 @@ model ArticleDraft {
   savedAt          DateTime?     @map("saved_at")
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
-  project          Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  topic            ContentTopic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  brief            ArticleBrief? @relation(fields: [briefId], references: [id], onDelete: SetNull)
+  project          Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  topic            ContentTopic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  brief            ArticleBrief?  @relation(fields: [briefId], references: [id], onDelete: SetNull)
+  images           ArticleImage[]
 
   @@unique([topicId, version])
   @@index([projectId, createdAt])
   @@map("article_drafts")
+}
+
+/// Reusable, user-provided project knowledge promoted from a topic answer.
+model ProjectKnowledge {
+  id             String   @id @default(uuid())
+  projectId      String   @map("project_id")
+  text           String
+  originQuestion String?  @map("origin_question")
+  originTopicId  String?  @map("origin_topic_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@map("project_knowledge")
+}
+
+/// A cover image for an article draft (generated or uploaded). Files are stored
+/// outside release directories (see CONTENT_ASSET_DIR).
+model ArticleImage {
+  id          String        @id @default(uuid())
+  projectId   String        @map("project_id")
+  draftId     String?       @map("draft_id")
+  version     Int           @default(1)
+  kind        String        @default("generated")
+  status      String        @default("ready")
+  prompt      String?
+  altText     String?       @map("alt_text")
+  provider    String?
+  model       String?
+  fileName    String?       @map("file_name")
+  mimeType    String?       @map("mime_type")
+  width       Int?
+  height      Int?
+  bytes       Int?
+  storagePath String?       @map("storage_path")
+  usage       Json?
+  selected    Boolean       @default(false)
+  error       String?
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  draft       ArticleDraft? @relation(fields: [draftId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
+  @@index([draftId])
+  @@map("article_images")
 }
 
 /// Asynchronous topic/article generation executions (distinct from analyses).

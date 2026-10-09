@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -20,7 +21,9 @@ import type {
   ContentRunView,
   ContentSettingsSnapshot,
   DraftView,
+  ProjectKnowledgeView,
   SourceRef,
+  TopicRequirement,
   TopicStatus,
   TopicView,
 } from './content.types.js';
@@ -33,6 +36,28 @@ function asSources(value: Json): SourceRef[] {
 
 function asStrings(value: Json): string[] {
   return Array.isArray(value) ? (value as string[]) : [];
+}
+
+function asRequirements(value: Json): TopicRequirement[] {
+  return Array.isArray(value) ? (value as unknown as TopicRequirement[]) : [];
+}
+
+/** Existing topics stored requirements as free text; keep them readable. */
+function requirementsFor(record: { requirements: Json; informationNeeded: string | null }): TopicRequirement[] {
+  const stored = asRequirements(record.requirements);
+  if (stored.length > 0) return stored;
+  if (record.informationNeeded) {
+    return [
+      {
+        id: 'legacy-0',
+        question: record.informationNeeded,
+        answer: null,
+        sourceUrl: null,
+        state: 'unanswered',
+      },
+    ];
+  }
+  return [];
 }
 
 function clean(value: string | null | undefined): string | null {
@@ -97,6 +122,9 @@ export class ContentService {
     if (dto.informationNeeded !== undefined) data.informationNeeded = clean(dto.informationNeeded);
     if (dto.objectiveAlignment !== undefined) data.objectiveAlignment = clean(dto.objectiveAlignment);
     if (dto.priority !== undefined) data.priority = dto.priority;
+    if (dto.requirements !== undefined) {
+      data.requirements = this.normalizeRequirements(dto.requirements) as unknown as Prisma.InputJsonValue;
+    }
     const topic = await this.prisma.contentTopic.update({ where: { id: topicId }, data });
     return this.toTopicView(topic);
   }
@@ -151,6 +179,7 @@ export class ContentService {
           destinationUrl: existing.destinationUrl,
           sources: asSources(existing.sources),
           confirmations: asStrings(existing.confirmations),
+          answers: asRequirements(existing.answers),
         }
       : {
           title: topic.title,
@@ -162,6 +191,7 @@ export class ContentService {
           destinationUrl: null,
           sources: asSources(topic.sources),
           confirmations: topic.informationNeeded ? [topic.informationNeeded] : [],
+          answers: requirementsFor(topic),
         };
     const merged: BriefSnapshot = {
       title: dto.title !== undefined ? dto.title : base.title,
@@ -173,6 +203,7 @@ export class ContentService {
       destinationUrl: dto.destinationUrl !== undefined ? clean(dto.destinationUrl) : base.destinationUrl,
       sources: dto.sources !== undefined ? dto.sources : base.sources,
       confirmations: dto.confirmations !== undefined ? dto.confirmations : base.confirmations,
+      answers: dto.answers !== undefined ? this.normalizeRequirements(dto.answers) : base.answers,
     };
     const brief = await this.prisma.articleBrief.upsert({
       where: { topicId },
@@ -192,12 +223,17 @@ export class ContentService {
   async listDrafts(projectId: string): Promise<DraftView[]> {
     await this.requireProject(projectId);
     const drafts = await this.prisma.articleDraft.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' } });
-    return drafts.map((draft) => this.toDraftView(draft));
+    const topicIds = [...new Set(drafts.map((draft) => draft.topicId))];
+    const briefs = await this.prisma.articleBrief.findMany({ where: { projectId, topicId: { in: topicIds } } });
+    const byTopic = new Map(briefs.map((brief) => [brief.topicId, brief]));
+    return drafts.map((draft) => this.toDraftView(draft, this.isStale(draft, byTopic.get(draft.topicId))));
   }
 
   async getDraft(projectId: string, draftId: string): Promise<DraftView> {
     await this.requireProject(projectId);
-    return this.toDraftView(await this.requireDraft(projectId, draftId));
+    const draft = await this.requireDraft(projectId, draftId);
+    const brief = await this.prisma.articleBrief.findUnique({ where: { topicId: draft.topicId } });
+    return this.toDraftView(draft, this.isStale(draft, brief ?? undefined));
   }
 
   async updateDraft(projectId: string, draftId: string, dto: UpdateDraftDto): Promise<DraftView> {
@@ -256,8 +292,12 @@ export class ContentService {
         destinationUrl: brief.destinationUrl,
         sources: asSources(brief.sources),
         confirmations: asStrings(brief.confirmations),
+        answers: asRequirements(brief.answers),
       } satisfies BriefSnapshot,
       research: this.researchSnapshot(project),
+      knowledge: (
+        await this.prisma.projectKnowledge.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' } })
+      ).map((note) => note.text),
     };
     const run = await this.prisma.contentRun.create({
       data: {
@@ -270,6 +310,53 @@ export class ContentService {
     });
     this.runner.enqueue(run.id);
     return this.toRunView(run);
+  }
+
+  // --- Project knowledge --------------------------------------------------
+
+  async listKnowledge(projectId: string): Promise<ProjectKnowledgeView[]> {
+    await this.requireProject(projectId);
+    const items = await this.prisma.projectKnowledge.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return items.map((item) => this.toKnowledgeView(item));
+  }
+
+  async createKnowledge(projectId: string, dto: { text: string; originQuestion?: string | null; originTopicId?: string | null }): Promise<ProjectKnowledgeView> {
+    const project = await this.requireProject(projectId);
+    this.assertActive(project);
+    const text = (dto.text ?? '').trim().slice(0, 2000);
+    if (!text) throw new BadRequestException('Knowledge text is required.');
+    const item = await this.prisma.projectKnowledge.create({
+      data: {
+        projectId,
+        text,
+        originQuestion: clean(dto.originQuestion),
+        originTopicId: clean(dto.originTopicId),
+      },
+    });
+    return this.toKnowledgeView(item);
+  }
+
+  async updateKnowledge(projectId: string, knowledgeId: string, dto: { text?: string }): Promise<ProjectKnowledgeView> {
+    const project = await this.requireProject(projectId);
+    this.assertActive(project);
+    const existing = await this.prisma.projectKnowledge.findFirst({ where: { id: knowledgeId, projectId } });
+    if (!existing) throw new NotFoundException('Knowledge note not found for this project.');
+    const item = await this.prisma.projectKnowledge.update({
+      where: { id: knowledgeId },
+      data: { ...(dto.text !== undefined ? { text: dto.text.trim().slice(0, 2000) } : {}) },
+    });
+    return this.toKnowledgeView(item);
+  }
+
+  async deleteKnowledge(projectId: string, knowledgeId: string): Promise<void> {
+    const project = await this.requireProject(projectId);
+    this.assertActive(project);
+    const existing = await this.prisma.projectKnowledge.findFirst({ where: { id: knowledgeId, projectId } });
+    if (!existing) throw new NotFoundException('Knowledge note not found for this project.');
+    await this.prisma.projectKnowledge.delete({ where: { id: knowledgeId } });
   }
 
   // --- Runs ---------------------------------------------------------------
@@ -289,6 +376,20 @@ export class ContentService {
 
   // --- Helpers ------------------------------------------------------------
 
+  private normalizeRequirements(
+    list: Array<{ id?: string; question: string; answer?: string | null; sourceUrl?: string | null; state?: string }>,
+  ): TopicRequirement[] {
+    return list.slice(0, 10).map((item, index) => ({
+      id: item.id && item.id.length > 0 ? item.id : `req-${index}-${Math.random().toString(36).slice(2, 8)}`,
+      question: item.question.trim().slice(0, 500),
+      answer: clean(item.answer)?.slice(0, 2000) ?? null,
+      sourceUrl: clean(item.sourceUrl)?.slice(0, 2048) ?? null,
+      state: ['unanswered', 'answered', 'unknown', 'exclude'].includes(item.state ?? '')
+        ? (item.state as TopicRequirement['state'])
+        : item.answer && item.answer.trim() ? 'answered' : 'unanswered',
+    }));
+  }
+
   private briefData(brief: BriefSnapshot) {
     return {
       title: brief.title,
@@ -300,6 +401,7 @@ export class ContentService {
       destinationUrl: brief.destinationUrl,
       sources: brief.sources as unknown as Prisma.InputJsonValue,
       confirmations: brief.confirmations as unknown as Prisma.InputJsonValue,
+      answers: brief.answers as unknown as Prisma.InputJsonValue,
     };
   }
 
@@ -331,6 +433,7 @@ export class ContentService {
         callToAction: topic.callToAction,
         sources: topic.sources as unknown as Prisma.InputJsonValue,
         confirmations: (topic.informationNeeded ? [topic.informationNeeded] : []) as unknown as Prisma.InputJsonValue,
+        answers: requirementsFor(topic) as unknown as Prisma.InputJsonValue,
         settingsSnapshot: this.settingsSnapshot(project) as unknown as Prisma.InputJsonValue,
       },
     });
@@ -425,6 +528,7 @@ export class ContentService {
       origin: string;
       status: string;
       sources: Json;
+      requirements: Json;
       createdAt: Date;
       updatedAt: Date;
     };
@@ -444,6 +548,28 @@ export class ContentService {
       origin: record.origin,
       status: record.status as TopicStatus,
       sources: asSources(record.sources),
+      requirements: requirementsFor(record),
+      createdAt: record.createdAt.toISOString(),
+      updatedAt: record.updatedAt.toISOString(),
+    };
+  }
+
+  private toKnowledgeView(item: Record<string, unknown>): ProjectKnowledgeView {
+    const record = item as {
+      id: string;
+      projectId: string;
+      text: string;
+      originQuestion: string | null;
+      originTopicId: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+    };
+    return {
+      id: record.id,
+      projectId: record.projectId,
+      text: record.text,
+      originQuestion: record.originQuestion,
+      originTopicId: record.originTopicId,
       createdAt: record.createdAt.toISOString(),
       updatedAt: record.updatedAt.toISOString(),
     };
@@ -463,6 +589,7 @@ export class ContentService {
       destinationUrl: string | null;
       sources: Json;
       confirmations: Json;
+      answers: Json;
       createdAt: Date;
       updatedAt: Date;
     };
@@ -479,12 +606,13 @@ export class ContentService {
       destinationUrl: record.destinationUrl,
       sources: asSources(record.sources),
       confirmations: asStrings(record.confirmations),
+      answers: asRequirements(record.answers),
       createdAt: record.createdAt.toISOString(),
       updatedAt: record.updatedAt.toISOString(),
     };
   }
 
-  private toDraftView(draft: Record<string, unknown>): DraftView {
+  private toDraftView(draft: Record<string, unknown>, stale = false): DraftView {
     const record = draft as {
       id: string;
       projectId: string;
@@ -501,6 +629,7 @@ export class ContentService {
       callToAction: string | null;
       sources: Json;
       unresolvedClaims: Json;
+      briefSnapshot: Json;
       generationRunId: string | null;
       savedAt: Date | null;
       createdAt: Date;
@@ -524,9 +653,18 @@ export class ContentService {
       unresolvedClaims: asStrings(record.unresolvedClaims),
       generationRunId: record.generationRunId,
       savedAt: record.savedAt ? record.savedAt.toISOString() : null,
+      stale,
       createdAt: record.createdAt.toISOString(),
       updatedAt: record.updatedAt.toISOString(),
     };
+  }
+
+  /** The draft predates changes to the current brief answers. */
+  private isStale(draft: { briefSnapshot: Json }, brief: { answers: Json } | undefined): boolean {
+    const snapshot = draft.briefSnapshot as { answers?: TopicRequirement[] } | null;
+    const snapAnswers = snapshot?.answers ?? [];
+    const current = brief ? asRequirements(brief.answers) : [];
+    return JSON.stringify(snapAnswers) !== JSON.stringify(current);
   }
 
   private toRunView(run: Record<string, unknown>): ContentRunView {

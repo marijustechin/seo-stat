@@ -113,6 +113,22 @@ never committed and never printed.
   `docs/functional-architecture.md` and enforced in code. The credential is set
   by the administrator/operator; the bootstrap script does not create it.
 
+## Article cover-image provider (optional)
+
+- Cover-image generation is a **separate capability and credential** from the
+  text provider; it is not required and does not use `DEEPSEEK_API_KEY`. It uses
+  the OpenAI Images API (`POST /v1/images/generations`, base64 response).
+- Configure server-side only in `/srv/seo-stat/config/api.env` (mode 0600):
+  `IMAGE_API_KEY` (or `OPENAI_IMAGE_API_KEY`) and optional `IMAGE_MODEL`
+  (default `gpt-image-2.5-flare`) and `IMAGE_BASE_URL` (default
+  `https://api.openai.com/v1`). Restart the API user service after changing them.
+- When no image key is set, generation returns 503 and the System page shows the
+  image provider as not configured; **uploading** a cover always works without
+  any credential.
+- Generated/uploaded image files are written to `CONTENT_ASSET_DIR` (default
+  `/srv/seo-stat/data/content-images`), which is outside the release directory so
+  assets survive deployments. The directory must be writable by `seostat`.
+
 ## Rollback semantics
 
 - On a failed post-deploy health check, `deploy.sh` restores the previous

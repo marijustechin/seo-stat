@@ -1,6 +1,14 @@
-import { IsIn, IsOptional, IsString, Length, MaxLength } from 'class-validator';
+import { IsArray, IsIn, IsOptional, IsString, Length, MaxLength } from 'class-validator';
 import { CONTENT_LIMITS } from '../content.limits.js';
 import { TOPIC_PRIORITIES } from '../content.types.js';
+
+export interface RequirementInput {
+  id?: string;
+  question: string;
+  answer?: string | null;
+  sourceUrl?: string | null;
+  state?: string;
+}
 
 export class UpdateTopicDto {
   @IsOptional()
@@ -51,4 +59,8 @@ export class UpdateTopicDto {
   @IsOptional()
   @IsIn(TOPIC_PRIORITIES)
   priority?: 'primary' | 'secondary' | 'supporting';
+
+  @IsOptional()
+  @IsArray()
+  requirements?: RequirementInput[];
 }

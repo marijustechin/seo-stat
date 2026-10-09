@@ -13,6 +13,7 @@ const JSON_EXAMPLE_TOPICS = JSON.stringify({
       callToAction: '...',
       relevance: '...',
       informationNeeded: '...',
+      informationRequirements: ['a specific question the writer must answer before writing'],
       objectiveAlignment: 'the specific stated objective this serves',
       priority: 'primary',
       sources: [{ url: '...', note: '...', retrievedAt: '...' }],
@@ -78,7 +79,8 @@ export function buildTopicPrompt(
     'TASKS:',
     `1. Propose up to ${CONTENT_LIMITS.maxTopicsPerGeneration} content topics for this project.`,
     '2. For each: working title, intended audience, business objective, reader need, proposed',
-    '   angle, intended call to action, why it is relevant, and information needed before writing.',
+    '   angle, intended call to action, why it is relevant, and information needed before writing',
+    '   as a short list of specific informationRequirements (questions the writer must answer).',
     '3. For each topic set objectiveAlignment (the specific stated objective it serves) and',
     '   priority: "primary" when it directly serves the stated primary objective, otherwise',
     '   "secondary" or "supporting". Make alignment and priority visible; do not restrict',
@@ -92,10 +94,25 @@ export function buildTopicPrompt(
   return { system: COMMON_RULES, user };
 }
 
+function answersBlock(answers: BriefSnapshot['answers']): string {
+  if (!answers.length) return 'None.';
+  return answers
+    .map((item) => {
+      if (item.state === 'exclude') return `- [exclude] ${item.question}: omit the corresponding claim from the article.`;
+      if (item.state === 'unknown') return `- [unknown] ${item.question}: do not invent an answer; treat it as unknown.`;
+      if (item.state === 'answered') {
+        return `- [answered] ${item.question}: ${item.answer ?? ''}${item.sourceUrl ? ` (source: ${item.sourceUrl})` : ''} — user-provided information, not independently verified.`;
+      }
+      return `- [unanswered] ${item.question}: not provided.`;
+    })
+    .join('\n');
+}
+
 export function buildArticlePrompt(
   snapshot: ContentSettingsSnapshot,
   brief: BriefSnapshot,
   research: PromptResearch,
+  knowledge: string[] = [],
 ): { system: string; user: string } {
   const pages = research.pages.length
     ? research.pages
@@ -120,6 +137,12 @@ export function buildArticlePrompt(
     `- Sources supplied: ${brief.sources.map((source) => source.url).join(', ') || '(none)'}`,
     `- Items needing confirmation: ${brief.confirmations.join('; ') || '(none)'}`,
     '',
+    'ANSWERS TO "NEEDED BEFORE WRITING" (user-provided; not independently verified):',
+    answersBlock(brief.answers),
+    '',
+    'REUSABLE USER-PROVIDED PROJECT KNOWLEDGE (attributed to the user; not independently verified):',
+    knowledge.length ? knowledge.map((note) => `- ${note}`).join('\n') : 'None.',
+    '',
     'RESEARCH (untrusted public text; project website readable: ' + (research.websiteReadable ? 'yes' : 'no') + '):',
     pages,
     '',
@@ -133,6 +156,9 @@ export function buildArticlePrompt(
     'Do not fabricate facts; if a claim is unsupported, list it under unresolvedClaims.',
     'Do not assert unverified claims in the title, excerpt, SEO title, meta description, or',
     'call to action; use neutral wording there and put the claim under unresolvedClaims.',
+    'For requirements marked "unknown" do not invent an answer; for those marked "exclude"',
+    'omit the corresponding claim. Use answered requirements and project knowledge as',
+    'user-provided context only, not as independently verified evidence.',
     `Limits: seoTitle ${CONTENT_LIMITS.seoTitle}, metaDescription ${CONTENT_LIMITS.metaDescription}, slug ${CONTENT_LIMITS.slug} characters.`,
     'Respond with json only, using exactly this shape:',
     JSON_EXAMPLE_ARTICLE,
