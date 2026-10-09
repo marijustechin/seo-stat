@@ -77,15 +77,45 @@ and paid-plan changes.
 ## State
 
 - Implementation: complete
-- Verification: complete (automated). **Live Gemini generation is pending** — the
-  operator key has not been added yet.
-- Commit: committed on `main`
-- Deployment: deployed automatically by the systemd user timer (see live note)
+- Verification: complete, including one real Gemini generation (the authorized
+  paid call) with the operator's key.
+- Commit: committed on `main` (`34ddf7a` feature; this live-verification record)
+- Deployment: deployed automatically by the systemd user timer (`34ddf7a`; see
+  live note)
 
-## Live verification
+## Live verification (deployed release)
 
-- Pending: when `GEMINI_API_KEY` is present, set `IMAGE_PROVIDER=gemini` and
-  `GEMINI_IMAGE_MODEL=gemini-3.1-flash-image`, restart only `seo-stat-api.service`,
-  and perform one real generation (authorized paid call) without changing existing
-  images or the selected cover. Report the article, exact prompt, model, available
-  usage, and result.
+- Deployed `34ddf7a`; the release installs `@google/genai`; health 200.
+  `system/status` reports `image: { provider: "gemini", model:
+  "gemini-3.1-flash-image", configured: true, maxPromptLength: 48000, parameters:
+  { aspectRatio: "16:9", model: "gemini-3.1-flash-image" } }`.
+- Restarted only `seo-stat-api.service`; the running process matched the config
+  file (hashes) for `IMAGE_PROVIDER`, `GEMINI_API_KEY`, and `GEMINI_IMAGE_MODEL`.
+- **One real generation** through the app's existing endpoint on the article
+  **"What Happens to Your Donated Clothes? Reuse, Recycling and Zero Landfill
+  Explained"** (draft `aebcf00d`, chosen to leave all existing images and the
+  selected cover untouched):
+  - Exact submitted prompt (built from the saved title + summary):
+    `Create a landscape editorial cover illustration for an article titled "What
+    Happens to Your Donated Clothes? Reuse, Recycling and Zero Landfill
+    Explained". Article summary: A plain-language look at what happens to a
+    garment after it reaches a textile collection point: how it is assessed for
+    its best next use, hand-sorted and graded by category, season and quality, and
+    routed to reuse or recycling rather than landfill. Style: conceptual and
+    non-photographic, clean and modern, suitable as a blog header. Do not include
+    any text, words, letters, numbers, captions, logos, or watermarks in the
+    image. Do not depict real people, identifiable customers, facilities, or brand
+    logos, and do not include statistics or unsupported claims.`
+  - Model: `gemini-3.1-flash-image` (provider `gemini`), aspect ratio `16:9`.
+  - Result: **201** in ~11.0 s; image **v1**, status `ready`, `image/jpeg`
+    (detected from bytes), `cover-v1.jpg`, **1376×768** (landscape), 749,892 bytes.
+  - Reported usage (actual): `serviceTier: standard`, `totalTokenCount: 1663`,
+    `promptTokenCount: 149` (TEXT), `candidatesTokenCount: 1514`, image tokens
+    `1120`.
+- **Inspection**: the served file (`GET .../images/{id}/file`) returned 200
+  `image/jpeg` with a valid JPEG signature at the full byte count; the decoded
+  image is a valid 1376×768 landscape cover. (Subjective aesthetic review requires
+  a human; the technical/visual metadata is recorded here.)
+- **Existing images and selected cover unchanged**: the tested article gained one
+  unselected image; the other article's selected cover remains **v4** (Cloudflare).
+- Cloudflare/OpenAI were not used (no fallback), and no paid-plan change was made.
