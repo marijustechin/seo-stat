@@ -115,14 +115,16 @@ and changing the DeepSeek text provider.
 - Verification: complete (automated + deployed structural checks). **Live
   Cloudflare generation verification is pending** — the configured API token was
   rejected (HTTP 401); no credential was acquired or replaced.
-- Commit: committed on `main`
-- Deployment: deployed automatically by the systemd user timer (see live note)
+- Commit: committed on `main` (`ac67c7b` feature; `72b708c` auth-classification
+  follow-up and live record)
+- Deployment: deployed automatically by the systemd user timer (`72b708c`; see
+  live note)
 
 ## Live verification (deployed release)
 
-- Deployed `ac67c7b` (auth-classification follow-up below); deploy log shows
-  migration `20261009110428_image_generation_parameters` applied; `prisma migrate
-  status` reports "Database schema is up to date" (7 migrations); health 200.
+- Deployed `72b708c`; deploy log shows migration
+  `20261009110428_image_generation_parameters` applied; `prisma migrate status`
+  reports "Database schema is up to date" (7 migrations); health 200.
 - Server configuration (values never printed): `IMAGE_PROVIDER=cloudflare`,
   `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are present. `system/status`
   reports `image: { provider: "cloudflare", model:
