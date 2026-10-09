@@ -10,6 +10,7 @@ import {
 import type { PublishingPolicy } from '@/entities/project/model';
 import { timezoneOptions } from '@/shared/config/timezones';
 import { useProject } from '@/widgets/project-workspace/project-context';
+import { WordpressIntegration } from './wordpress-integration';
 
 function clean(value: string): string | null {
   const trimmed = value.trim();
@@ -358,12 +359,7 @@ export function ProjectSettingsForm() {
         </button>
       </div>
 
-      <fieldset className="fieldset">
-        <legend>Integrations</legend>
-        <p className="muted">
-          Connections to external services are not implemented yet. No credentials are stored.
-        </p>
-      </fieldset>
+      <WordpressIntegration />
 
       <fieldset className="fieldset">
         <legend>Project status</legend>

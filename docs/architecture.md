@@ -41,8 +41,15 @@ architecture.
     information-requirement answers), reusable project knowledge, versioned
     drafts, article cover images (upload/generation with a separate provider),
     and their asynchronous generation runs.
-  - `src/modules/system` - global system status (analysis, research, and image
-    provider configuration).
+  - `src/modules/integrations` - project-scoped external integrations: the
+    WordPress connection (encrypted credentials, connection test) and explicit
+    article-draft export to a WordPress draft with reliable external-action
+    records. Credential encryption and the WordPress REST client sit here.
+  - `src/common` - shared infrastructure reused across modules: outbound
+    public-URL/SSRF protections and a bounded JSON request helper, plus the
+    dependency-free Markdown-to-safe-HTML converter.
+  - `src/modules/system` - global system status (analysis, research, image
+    provider, and integration-encryption configuration).
   - `src/modules/health` - health domain module.
   - `src/database` - Prisma infrastructure (`DatabaseModule`, `PrismaService`).
   - `src/config` - configuration infrastructure (`AppConfigModule`).
@@ -56,7 +63,8 @@ architecture.
   pinned version/ESM/port rules).
 - `scripts/smoke-subpath.mjs` - subpath routing and health smoke test.
 
-No scheduling, job execution, generation, publishing, or reporting exists yet.
+No scheduling, workflow execution, or external publishing (beyond the explicit
+WordPress draft export) exists yet.
 
 ## Proposed components (not implemented)
 
@@ -84,6 +92,9 @@ No scheduling, job execution, generation, publishing, or reporting exists yet.
   `docs/functional-architecture.md`).
 - Backend module layout and frontend layer boundaries (see above).
 - Deployment: GitHub artifact + systemd user timer; see `docs/deployment.md`.
+- Integration credentials: stored server-side with authenticated encryption
+  (AES-256-GCM) under a deployment-managed key outside the release directories;
+  never returned to the browser or written to logs/errors.
 
 ## Unresolved decisions
 
@@ -92,9 +103,9 @@ No scheduling, job execution, generation, publishing, or reporting exists yet.
 - How application-level (non-secret) settings are managed beyond environment
   variables.
 - Authentication and access control: **not implemented**. The API (including the
-  content image-file route) trusts the caller and relies on the private network
-  and nginx; project scoping limits which records are visible but is not
-  identity-based authentication.
+  content image-file route and the WordPress integration/export routes) trusts
+  the caller and relies on the private network and nginx; project scoping limits
+  which records are visible but is not identity-based authentication.
 - Review workflow mechanics and where review state lives.
 - Duplicate-publication detection strategy per channel.
 - Whether reporting reads third-party APIs directly or stored snapshots.

@@ -4,6 +4,7 @@ import { DatabaseModule } from './database/index.js';
 import { AnalysisModule } from './modules/analysis/index.js';
 import { ContentModule } from './modules/content/index.js';
 import { HealthModule } from './modules/health/index.js';
+import { IntegrationsModule } from './modules/integrations/index.js';
 import { ProjectsModule } from './modules/projects/index.js';
 import { SystemModule } from './modules/system/system.module.js';
 
@@ -15,6 +16,7 @@ import { SystemModule } from './modules/system/system.module.js';
     ProjectsModule,
     AnalysisModule,
     ContentModule,
+    IntegrationsModule,
     SystemModule,
   ],
 })

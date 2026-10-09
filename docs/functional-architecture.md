@@ -201,18 +201,60 @@ select a topic, review/edit a brief, generate an article draft, and edit/review 
   The provider is optional and uses a separate `IMAGE_API_KEY`; DeepSeek remains
   the text provider.
 
+## WordPress integration and article export (implemented, TASK-0010)
+
+Project Settings has a **WordPress** section: site URL, username, and a dedicated
+Application Password, with save, test connection, replace credential, and
+disconnect; it shows configured/unconfigured and connection-test states.
+
+- Connections use HTTPS only. Credentials are stored server-side with
+  authenticated encryption (AES-256-GCM) under a deployment-managed key that
+  lives outside the release directories. The stored password is never returned to
+  the browser, logged, put in an API error, or committed; leaving the password
+  field blank preserves the stored credential.
+- The connection test verifies the authenticated identity and inspects its
+  capabilities (`GET /wp-json/wp/v2/users/me?context=edit`) and **creates no
+  content**. Outbound requests use the shared public-URL/SSRF protections, and
+  authentication headers are never forwarded to a different origin after a
+  redirect.
+- The article draft has an explicit **"Send draft to WordPress"** action. Before
+  exporting it shows the destination site, article title, selected cover, and the
+  fact that the WordPress post will remain a **draft**. Only persisted article
+  values and the selected cover are exported; unsaved edits are detected and block
+  the action. Mapping: title, slug, excerpt; Markdown body converted to safe HTML
+  (raw HTML escaped; links limited to http/https); the selected cover uploaded to
+  WordPress and assigned as featured media, with its alt text. Sources and
+  unresolved claims stay available in SEO-STAT, and internal review notes are not
+  appended to the body. SEO title and meta description remain local and are not
+  claimed to be synchronized with Yoast or any SEO plugin. **The export never
+  requests publish or scheduled status, regardless of the project publishing
+  policy.**
+- Every attempt is persisted with the local draft/version identity, destination,
+  payload hash, remote post/media ids, timestamps, outcome, and sanitized errors.
+  Concurrent exports for one draft are prevented (a partial unique index on
+  in-progress attempts); after a confirmed success, later exports update the same
+  remote draft and reuse unchanged uploaded media. Partial success records the
+  uploaded media id. An ambiguous timeout becomes **outcome uncertain** and
+  requires reconciliation — a create is never blindly retried. Remote edits or a
+  remote post that is no longer a draft are detected and are never overwritten or
+  converted back to a draft. The UI shows the export state, last exported
+  version, changes since export, and a link to the WordPress editor. Archived
+  projects keep export history but reject exports and updates.
+
 ## Review policy semantics
 
 - Manually requested public website research may execute without another
   approval.
 - Applying proposed project settings always requires the user's explicit action.
 - Publishing, sending messages, and modifying external systems remain subject to
-  the project's review policy.
+  the project's review policy. The WordPress export always creates/updates a
+  WordPress **draft** and never publishes or schedules, so it does not bypass the
+  review policy for publication.
 
 ## Planned capabilities (not implemented)
 
 - Workflow definitions, schedules, and execution history.
-- External integrations and credentials.
+- LinkedIn publishing and external integrations beyond the WordPress draft export.
 - Metrics, reports, and aggregate costs.
 
 ## Visual design (approved)

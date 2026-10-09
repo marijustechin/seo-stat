@@ -6,6 +6,7 @@ import type { ArticleDraft } from '@/entities/content/model';
 import { ApiError } from '@/shared/api/client';
 import { renderMarkdown } from '@/shared/lib/markdown';
 import { CoverImage } from './cover-image';
+import { DraftWordpressExport } from './draft-wordpress-export';
 
 function linesToList(value: string): string[] {
   return value
@@ -87,6 +88,15 @@ export function DraftEditor({
   };
 
   const claims = linesToList(form.unresolvedClaims);
+  const dirty =
+    form.title !== (draft.title ?? '') ||
+    form.slug !== (draft.slug ?? '') ||
+    form.seoTitle !== (draft.seoTitle ?? '') ||
+    form.metaDescription !== (draft.metaDescription ?? '') ||
+    form.excerpt !== (draft.excerpt ?? '') ||
+    form.callToAction !== (draft.callToAction ?? '') ||
+    form.bodyMarkdown !== draft.bodyMarkdown ||
+    form.unresolvedClaims !== draft.unresolvedClaims.join('\n');
 
   return (
     <div className="draft-editor">
@@ -180,6 +190,8 @@ export function DraftEditor({
       )}
 
       <CoverImage projectId={projectId} draftId={draft.id} />
+
+      <DraftWordpressExport projectId={projectId} draft={draft} dirty={dirty} />
 
       <div className="form-actions">
         <button type="button" className="button cursor-pointer" onClick={save} disabled={saving}>

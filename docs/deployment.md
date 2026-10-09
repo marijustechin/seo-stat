@@ -72,7 +72,7 @@ never committed and never printed.
 
 - Migrations are applied with `prisma migrate deploy` (never `migrate dev` or
   `db push` in production) only when `apps/api/prisma/migrations` contains
-  migrations. There are none yet, so this step is currently a no-op.
+  pending migrations; the deploy step reports when there are none to apply.
 - Before applying migrations, `deploy/scripts/backup-db.sh` writes a compressed
   `pg_dump` to `/srv/seo-stat/backups/seo_stat-<timestamp>.sql.gz`.
 - Restore: `gunzip -c /srv/seo-stat/backups/<file>.sql.gz | psql "${DATABASE_URL%%\?*}"`
@@ -145,6 +145,31 @@ never committed and never printed.
   project-scoped route that checks project/draft association only; anyone who can
   reach the server (the operator's private network / nginx) can read a file if
   they know its URL. Identity-based access control is not implemented.
+
+## WordPress integration (credentials)
+
+- WordPress connections use **WordPress Application Passwords over HTTPS**. A
+  project's site URL, username, and Application Password are entered in project
+  Settings. The application refuses non-HTTPS site URLs.
+- Credentials are stored server-side with **authenticated encryption
+  (AES-256-GCM)**. The 32-byte key is deployment-managed and lives **outside the
+  release directories** at `/srv/seo-stat/config/integration.key` (mode 0600),
+  configured by `INTEGRATION_ENCRYPTION_KEY_FILE`. `bootstrap-admin.sh` and
+  `install-user-units.sh` generate it if missing. When it is absent, storing or
+  reading credentials fails closed with 503 and the System page reports the
+  integration-encryption configuration as unavailable.
+- A stored password is never returned to the browser, written to logs, included
+  in an API error, or committed; leaving the password field blank preserves the
+  stored credential. The connection test verifies the account identity and
+  capabilities via `GET /wp-json/wp/v2/users/me?context=edit` and creates no
+  content.
+- Outbound WordPress requests use the shared public-URL/SSRF protections (public
+  http/https on 80/443 only, DNS/redirect checks). Authentication headers are
+  never forwarded to a different origin after a redirect.
+- The draft export always creates or updates a WordPress **draft**; it never
+  requests publish or scheduled status, regardless of the project publishing
+  policy. See `docs/functional-architecture.md` for the export and external-action
+  record semantics.
 
 ## Rollback semantics
 

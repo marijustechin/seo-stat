@@ -22,6 +22,17 @@ if [ ! -f "$root/config/web.env" ]; then
   install -m 0644 "$deploy_dir/web.env.example" "$root/config/web.env"
 fi
 
+# Deployment-managed key for authenticated encryption of integration credentials.
+integration_key="$root/config/integration.key"
+if [ ! -s "$integration_key" ]; then
+  head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$integration_key"
+  chmod 0600 "$integration_key"
+  printf 'generated %s\n' "$integration_key"
+fi
+if [ -f "$root/config/api.env" ] && ! grep -q '^INTEGRATION_ENCRYPTION_KEY_FILE=' "$root/config/api.env"; then
+  printf '%s\n' "INTEGRATION_ENCRYPTION_KEY_FILE=$integration_key" >> "$root/config/api.env"
+fi
+
 systemctl --user daemon-reload
 systemctl --user enable seo-stat-api.service seo-stat-web.service
 systemctl --user enable --now seo-stat-deploy.timer

@@ -39,6 +39,8 @@ model Project {
   contentRuns      ContentRun[]
   knowledge        ProjectKnowledge[]
   images           ArticleImage[]
+  integration      WordpressIntegration?
+  wordpressExports WordpressExport[]
 
   @@index([status])
   @@map("projects")
@@ -156,10 +158,59 @@ model ArticleDraft {
   topic            ContentTopic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
   brief            ArticleBrief?  @relation(fields: [briefId], references: [id], onDelete: SetNull)
   images           ArticleImage[]
+  wordpressExports WordpressExport[]
 
   @@unique([topicId, version])
   @@index([projectId, createdAt])
   @@map("article_drafts")
+}
+
+/// One WordPress site connection per project. The application password is stored
+/// encrypted (AES-256-GCM) with a deployment-managed key outside releases.
+model WordpressIntegration {
+  id                String    @id @default(uuid())
+  projectId         String    @unique @map("project_id")
+  siteUrl           String    @map("site_url")
+  username          String
+  passwordEncrypted String    @map("password_encrypted")
+  lastTestStatus    String?   @map("last_test_status")
+  lastTestAt        DateTime? @map("last_test_at")
+  lastTestError     String?   @map("last_test_error")
+  lastTestIdentity  Json?     @map("last_test_identity")
+  connectedAt       DateTime  @default(now()) @map("connected_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  project           Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("wordpress_integrations")
+}
+
+/// One external-action attempt to send a draft to WordPress as a WordPress draft.
+/// Records the local draft/version, destination, payload hash, remote ids,
+/// outcome, and sanitized error. A partial unique index (status = in_progress)
+/// prevents concurrent exports for the same draft.
+model WordpressExport {
+  id             String        @id @default(uuid())
+  projectId      String        @map("project_id")
+  draftId        String        @map("draft_id")
+  draftVersion   Int           @map("draft_version")
+  siteUrl        String        @map("site_url")
+  status         String
+  remotePostId   Int?          @map("remote_post_id")
+  remoteMediaId  Int?          @map("remote_media_id")
+  remoteModified String?       @map("remote_modified")
+  remoteLink     String?       @map("remote_link")
+  mediaHash      String?       @map("media_hash")
+  payloadHash    String        @map("payload_hash")
+  error          String?
+  finishedAt     DateTime?     @map("finished_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  draft          ArticleDraft  @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([draftId, createdAt])
+  @@map("wordpress_exports")
 }
 
 /// Reusable, user-provided project knowledge promoted from a topic answer.

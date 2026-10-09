@@ -158,11 +158,19 @@ changes.
   `bootstrap-admin.sh`/`install-user-units.sh` and never touched by the deploy
   step.
 
-## Live image-generation verification (PENDING)
+## Live image-generation verification (PENDING — provider rejected)
 
-- **Not performed.** No `IMAGE_API_KEY` is configured on the server, and per the
-  operator instruction no OpenAI credential was acquired or reused. Until a
-  credential is configured and a real image is generated, live generation
-  verification (a real provider call, decoded PNG, recorded usage) remains
-  pending. Implementation and deployment completion are independent of this
-  pending item.
+- Re-checked 2026-10-09 during TASK-0010 **without printing the key**:
+  `IMAGE_API_KEY` is configured on the server and `system/status` reports
+  `image.configured: true` (provider `openai-images`, model `gpt-image-2.5-flare`).
+- A real generation was attempted on an existing internal draft (TexTrade UK),
+  and a second (regenerate) attempt after editing the prompt. Both were **rejected
+  by the provider** with the exact sanitized error:
+  `429 You have no credits remaining. Add credits to continue using the API at
+  https://platform.openai.com/settings/organization/billing/.`
+  The failed attempts were recorded with provider/model and then removed; the
+  draft is back to zero images. No credential was acquired or replaced, and no
+  provider was substituted.
+- Result: live image-generation verification remains **pending** until the
+  provider account has credits. Implementation and deployment completion are
+  independent of this item.

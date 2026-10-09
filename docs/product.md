@@ -48,8 +48,12 @@ project management, system settings, and aggregate costs. See
   knowledge included in later drafts, and drafts generated from an earlier brief
   are flagged stale.
 - Article cover images per draft: generate from a visual brief (when an image
-  provider is configured) or upload; selected image, alt text, and safe
-  authenticated serving.
+  provider is configured) or upload; selected image, alt text, and safe serving.
+- WordPress integration per project (site URL, username, encrypted Application
+  Password, connection test) and an explicit "Send draft to WordPress" action
+  that creates or updates a WordPress **draft** (never publishes), mapping title,
+  slug, excerpt, safe HTML body, and the selected cover as featured media, with
+  reliable export records and conflict/uncertain handling.
 - Database-backed API health endpoint at `/seo-stat/api/health`.
 - Subpath routing, a development proxy, and automatic deployment.
 

@@ -11,3 +11,4 @@
 | [TASK-0007](TASK-0007-content-topics-drafts.md) | Project content topics and the first reviewable article draft | completed |
 | [TASK-0008](TASK-0008-content-answers-knowledge.md) | Content information requirements, answers, and reusable knowledge | completed |
 | [TASK-0009](TASK-0009-article-cover-images.md) | Article cover images (generate or upload) | completed |
+| [TASK-0010](TASK-0010-wordpress-integration-export.md) | Project-scoped WordPress integration and article export | completed |

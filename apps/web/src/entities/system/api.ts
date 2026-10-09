@@ -16,6 +16,9 @@ export interface SystemStatus {
     model: string;
     configured: boolean;
   };
+  integrations: {
+    encryptionConfigured: boolean;
+  };
 }
 
 export function getSystemStatus(): Promise<SystemStatus> {

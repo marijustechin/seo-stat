@@ -77,6 +77,18 @@ export function SystemStatusCard() {
               set IMAGE_API_KEY on the server.
             </p>
           )}
+
+          <h3>External integrations</h3>
+          {state.status.integrations.encryptionConfigured ? (
+            <p className="status-ok" role="status">
+              Credential encryption is configured. WordPress connections can be stored securely.
+            </p>
+          ) : (
+            <p role="status">
+              Credential encryption is not configured, so integration credentials cannot be stored. An
+              administrator must provide the integration encryption key.
+            </p>
+          )}
         </>
       )}
     </section>

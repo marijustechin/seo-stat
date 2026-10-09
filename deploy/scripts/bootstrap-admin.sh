@@ -62,10 +62,22 @@ SELECT 'CREATE DATABASE ${DB_NAME} OWNER ${DB_USER}'
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${DB_NAME}')\gexec
 SQL
 
+integration_key="$ROOT/config/integration.key"
+if [ ! -s "$integration_key" ]; then
+  head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$integration_key"
+  echo "generated $integration_key"
+fi
+chown "$OWNER:$OWNER" "$integration_key"
+chmod 0600 "$integration_key"
+
 cat > "$api_env" <<EOF
 DATABASE_URL=postgresql://${DB_USER}:${db_password}@127.0.0.1:5432/${DB_NAME}?schema=public
 PORT=3011
 NODE_ENV=production
+# Deployment-managed key for authenticated encryption of integration credentials
+# (WordPress Application Passwords). Lives outside the release directories.
+INTEGRATION_ENCRYPTION_KEY_FILE=${ROOT}/config/integration.key
+CONTENT_ASSET_DIR=${ROOT}/data/content-images
 EOF
 chown "$OWNER:$OWNER" "$api_env"
 chmod 0600 "$api_env"
