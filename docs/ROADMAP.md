@@ -305,6 +305,12 @@ instead of from the author's assertion.
 
 - Depends on: nothing.
 - Size: S.
+- Motivation, observed on 2026-10-13: after the first push made from an agent
+  session, the deployment state of commit `627ebd8` could not be confirmed,
+  because the API health endpoint exposes no release identifier. The task records
+  had to say "not verified" instead of naming a deployed release. Nothing in the
+  system can currently answer "which commit is running?" without reading the
+  server.
 - Open questions: which facts are recorded automatically (commit sha, deployed
   sha, health result) and who may edit the record afterwards.
 

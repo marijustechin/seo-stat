@@ -132,5 +132,9 @@ the two pointer sections in `AGENTS.md` and `README.md`.
 
 - Implementation: complete
 - Verification: complete (harness validation passed; output above)
-- Commit: not committed
-- Deployment: not deployed
+- Commit: committed on `main` as `627ebd8`, together with TASK-0014. CI run 46
+  succeeded: `Harness validation` and `Application` both reported `success`.
+- Deployment: **not verified.** The systemd user timer deploys every successful
+  `main` build, so the release is expected, but it was not confirmed from the
+  development machine. The API health endpoint exposes no release identifier, so
+  it cannot serve as evidence (see ROADMAP-15 in `docs/ROADMAP.md`).
