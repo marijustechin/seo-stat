@@ -409,16 +409,16 @@ export function ContentWorkspace() {
                     )}
                     {topic.requirements.length > 0 && (
                       <div>
-                        <dt>Needed before writing</dt>
+                        <dt>Information gaps</dt>
                         <dd>
                           {topic.requirements.filter((item) => item.state === 'answered').length}/
-                          {topic.requirements.length} answered
+                          {topic.requirements.length} answered (optional)
                         </dd>
                       </div>
                     )}
                     {topic.requirements.length === 0 && topic.informationNeeded && (
                       <div>
-                        <dt>Needed before writing</dt>
+                        <dt>Information gaps</dt>
                         <dd>{topic.informationNeeded}</dd>
                       </div>
                     )}
@@ -495,7 +495,7 @@ export function ContentWorkspace() {
           <div className="field">
             <label htmlFor="brief-confirmations">Facts or questions requiring confirmation (one per line)</label>
             <textarea id="brief-confirmations" className="textarea" rows={3} value={brief.confirmations} onChange={(e) => setBrief({ ...brief, confirmations: e.target.value })} />
-            <p className="help">Unknown operational details stay unknown; they are not treated as established facts.</p>
+            <p className="help">Unknown details are resolved automatically or left out; they are never asserted as facts.</p>
           </div>
           <AnswersEditor
             requirements={briefAnswers}
@@ -564,7 +564,7 @@ export function ContentWorkspace() {
         {drafts && drafts.length === 0 && <p className="muted">No drafts yet.</p>}
         {drafts && drafts.some((draft) => draft.stale) && (
           <p className="muted" role="status">
-            A draft was generated from an earlier brief. Regenerate to include the latest answers and outline.
+            A draft was generated from an earlier brief. Regenerate to apply the latest answers and outline.
           </p>
         )}
         {drafts && drafts.length > 0 && (

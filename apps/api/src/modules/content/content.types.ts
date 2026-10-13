@@ -48,6 +48,67 @@ export interface SourceRef {
   retrievedAt?: string;
 }
 
+/** Every action the gap resolution ladder can record for one requirement. */
+export const GAP_ACTIONS = [
+  'researched',
+  'rewritten',
+  'neutral',
+  'excluded',
+  'operator_answer',
+  'unresolved',
+] as const;
+export type GapAction = (typeof GAP_ACTIONS)[number];
+
+/** Actions a model may report. Operator-driven actions are decided server-side. */
+export const MODEL_GAP_ACTIONS = ['researched', 'rewritten', 'neutral', 'unresolved'] as const;
+export type ModelGapAction = (typeof MODEL_GAP_ACTIONS)[number];
+
+export interface GapRecord {
+  requirementId: string;
+  question: string;
+  /** The operator's input, preserved verbatim and never overwritten. */
+  operatorState: RequirementState;
+  operatorAnswer: string | null;
+  operatorSourceUrl: string | null;
+  action: GapAction;
+  rationale: string;
+  evidence: SourceRef[];
+  remainingUncertainty: string | null;
+}
+
+export interface GapCounts {
+  total: number;
+  researched: number;
+  rewritten: number;
+  neutral: number;
+  excluded: number;
+  operatorAnswer: number;
+  unresolved: number;
+}
+
+export interface GapBudget {
+  maxPages: number;
+  usedPages: number;
+  droppedPages: number;
+  maxInputChars: number;
+  usedInputChars: number;
+}
+
+/**
+ * Read-only record of how one article run handled its information gaps. It is
+ * evidence, never a gate: nothing waits for it and nothing can acknowledge it.
+ */
+export interface GapDigest {
+  runId: string;
+  draftId: string | null;
+  draftVersion: number | null;
+  generatedAt: string;
+  counts: GapCounts;
+  budget: GapBudget;
+  records: GapRecord[];
+  neutralizedClaims: Array<{ field: string; claim: string; note: string }>;
+}
+
 export interface BriefSnapshot {
   title: string;
   angle: string;
@@ -117,6 +178,8 @@ export interface DraftView {
   sources: SourceRef[];
   unresolvedClaims: string[];
   generationRunId: string | null;
+  /** Read-only gap resolution digest of the run that produced this version. */
+  gapDigest: GapDigest | null;
   savedAt: string | null;
   /** True when the brief or topic answers changed after this draft was generated. */
   stale: boolean;
@@ -140,6 +203,8 @@ export interface ContentRunView {
   inputTokens: number | null;
   outputTokens: number | null;
   estimatedCostUsd: number | null;
+  /** Present for article runs; null for topic runs and for runs predating it. */
+  gapDigest: GapDigest | null;
   startedAt: string | null;
   finishedAt: string | null;
   createdAt: string;

@@ -42,7 +42,9 @@ architecture.
     drafts, article cover images (upload/generation behind an explicitly selected
     provider with no fallback: Cloudflare Workers AI FLUX, Google Gemini via the
     official `@google/genai` SDK, or OpenAI Images), and their asynchronous
-    generation runs.
+    generation runs. Article generation resolves information gaps through a
+    research/rewrite/neutral-wording ladder and stores a read-only gap resolution
+    digest per run (`content.digest.ts`, `content.research.ts`).
   - `src/modules/integrations` - project-scoped external integrations: the
     WordPress connection (encrypted credentials, connection test) and explicit
     article-draft export to a WordPress draft with reliable external-action
@@ -94,6 +96,10 @@ WordPress draft export) exists yet.
   `docs/functional-architecture.md`).
 - Backend module layout and frontend layer boundaries (see above).
 - Deployment: GitHub artifact + systemd user timer; see `docs/deployment.md`.
+- Operating model: the content pipeline is unattended by default, with `review` as
+  a per-project opt-in, and every article run records a read-only gap resolution
+  digest; see `docs/decisions/ADR-0010-unattended-content-pipeline.md` and
+  `docs/decisions/ADR-0011-gap-resolution-digest.md`.
 - Integration credentials: stored server-side with authenticated encryption
   (AES-256-GCM) under a deployment-managed key outside the release directories;
   never returned to the browser or written to logs/errors.

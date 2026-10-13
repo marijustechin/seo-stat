@@ -25,4 +25,17 @@ export const CONTENT_LIMITS = {
   maxUnresolvedClaims: 20,
   maxOutputTokensTopics: 3000,
   maxOutputTokensArticle: 6000,
+  /** Resolutions a single article generation may report for its requirements. */
+  maxGapResolutions: 10,
+  gapRationale: 500,
+  gapUncertainty: 500,
+  gapEvidenceUrls: 5,
+  gapEvidencePerRecord: 3,
+  /**
+   * Documented per-run research budget for one article generation. The run makes
+   * a single bounded research call; these limits cap what it consumes. Exhausting
+   * them leads to rewriting or omission, never to a question for the operator.
+   */
+  researchMaxPages: 8,
+  researchMaxInputChars: 30000,
 } as const;

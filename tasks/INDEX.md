@@ -16,3 +16,4 @@
 | [TASK-0012](TASK-0012-gemini-image-provider.md) | Google Gemini image provider and responsive cover previews | completed |
 | [TASK-0013](TASK-0013-architect-handoff.md) | Architect handoff: roadmap, decision records, and consult protocol | completed |
 | [TASK-0014](TASK-0014-unattended-operating-model.md) | Unattended operating model: decision record and roadmap correction | completed |
+| [TASK-0015](TASK-0015-gap-resolution.md) | Resolve article information gaps without operator intervention | completed |

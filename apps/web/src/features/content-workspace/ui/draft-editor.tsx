@@ -7,6 +7,7 @@ import { ApiError } from '@/shared/api/client';
 import { renderMarkdown } from '@/shared/lib/markdown';
 import { CoverImage } from './cover-image';
 import { DraftWordpressExport } from './draft-wordpress-export';
+import { GapDigestPanel } from './gap-digest';
 
 function linesToList(value: string): string[] {
   return value
@@ -118,15 +119,17 @@ export function DraftEditor({
 
       {claims.length > 0 && (
         <div className="card status-error" role="alert">
-          <strong>{claims.length} unresolved claim(s) require confirmation before review.</strong>
+          <strong>{claims.length} claim(s) could not be verified and are recorded in the gap report.</strong>
           <ul className="link-list">
             {claims.map((claim) => (
               <li key={claim}>{claim}</li>
             ))}
           </ul>
-          <p className="help">Unresolved claims are not automatically verified; accuracy is not guaranteed.</p>
+          <p className="help">Unresolved claims are not automatically verified; they are recorded for later verification.</p>
         </div>
       )}
+
+      <GapDigestPanel digest={draft.gapDigest} />
 
       <div className="field">
         <label htmlFor="draft-title">Article title</label>

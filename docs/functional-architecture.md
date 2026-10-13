@@ -147,10 +147,12 @@ select a topic, review/edit a brief, generate an article draft, and edit/review 
 
 ## Content information requirements, answers, and knowledge (implemented, TASK-0008)
 
-- A topic carries **information requirements**: the questions that must be
-  answered before writing. Each requirement has a stable id, the question text,
+- A topic carries **information requirements**: the questions that would
+  strengthen the article. Each requirement has a stable id, the question text,
   an optional answer and source reference, and a state:
-  `unanswered`, `answered`, `unknown`, or `exclude`.
+  `unanswered`, `answered`, `unknown`, or `exclude`. Requirements are **not** a
+  prerequisite: the writer resolves them automatically (see the gap resolution
+  section below).
 - Users answer requirements in the topic editor and in the brief. Answers are
   saved per topic and per brief and are included in the article generation
   snapshot. `unknown` is rendered to the model as "do not invent an answer", and
@@ -168,6 +170,44 @@ select a topic, review/edit a brief, generate an article draft, and edit/review 
   still requires an explicit action), and a draft generated from an earlier brief
   is flagged **stale** ("brief changed since generation") so the user can
   regenerate.
+
+## Gap resolution and the digest (implemented, TASK-0015)
+
+Article generation resolves information gaps on its own and records what it did.
+The operator is never required to answer before a draft can be produced; this
+implements [ADR-0010](decisions/ADR-0010-unattended-content-pipeline.md).
+
+- **Ladder**, applied per requirement in this order: resolve it from the project
+  knowledge and the research evidence; otherwise rewrite the content so the claim
+  is unnecessary; otherwise use neutral wording that does not imply the fact is
+  established; otherwise leave the claim out and record it as open.
+- Operator decisions are authoritative and preserved verbatim. `answered` is used
+  as provided information with its stated source, and `exclude` keeps the claim
+  out of the article even when the model reports otherwise. Generated conclusions
+  never overwrite them, and an operator answer is never presented as
+  independently verified evidence.
+- **Neutral wording never disguises an assertion.** Unsupportable absolute claims
+  (for example "zero landfill", "100%", "certified", "guaranteed", "carbon
+  neutral", or superlatives) are neutralized in the title, excerpt, SEO title,
+  meta description, call to action, and the article body, and are recorded.
+- **Research budget**: one bounded research call per article run, capped at 8
+  pages and 30 000 excerpt characters (`CONTENT_LIMITS.researchMaxPages` and
+  `researchMaxInputChars`). Nothing is retried until an answer is found, and an
+  exhausted budget leads to rewriting or omission rather than a question.
+- **Digest**: `ContentRun.gapDigest` records, for every requirement, the question,
+  the operator's state and answer, the action taken, the rationale, the evidence
+  with retrieval dates, and what remains to be verified, together with the run's
+  counts, its neutralized claims, and its research budget usage. A draft reaches
+  its digest through `generationRunId`. The digest is read-only and non-blocking
+  ([ADR-0011](decisions/ADR-0011-gap-resolution-digest.md)); it cannot be
+  acknowledged, and nothing waits for it.
+- **Provenance rule**: a resolution counts as `researched` only when it cites a URL
+  that was actually retrieved during that run; otherwise the requirement is
+  recorded as open. Inference is never labelled as verified evidence.
+- An inaccessible source, inconclusive research, an exhausted budget, or an absent
+  model report all still produce a completed draft with a digest. A technical
+  failure (provider, database, or unusable model output) still fails the run
+  truthfully and writes no draft.
 
 ## Article cover images (implemented, TASK-0009)
 
@@ -254,6 +294,11 @@ disconnect; it shows configured/unconfigured and connection-test states.
 
 - Manually requested public website research may execute without another
   approval.
+- The content pipeline is **unattended by default**: once the project's analysis
+  and publication interval are approved, topic selection, drafting, illustration,
+  and link planning proceed without operator actions
+  ([ADR-0010](decisions/ADR-0010-unattended-content-pipeline.md)). `review`
+  remains available as a per-project opt-in.
 - Applying proposed project settings always requires the user's explicit action.
 - Publishing, sending messages, and modifying external systems remain subject to
   the project's review policy. The WordPress export always creates/updates a
@@ -263,6 +308,7 @@ disconnect; it shows configured/unconfigured and connection-test states.
 ## Planned capabilities (not implemented)
 
 - Workflow definitions, schedules, and execution history.
+- Link planning (internal and external links) for generated articles.
 - LinkedIn publishing and external integrations beyond the WordPress draft export.
 - Metrics, reports, and aggregate costs.
 

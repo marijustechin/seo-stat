@@ -33,15 +33,32 @@ const CLAIM_RULES: ClaimRule[] = [
   },
 ];
 
-const GUARDED_FIELDS = ['title', 'excerpt', 'seoTitle', 'metaDescription', 'callToAction'] as const;
+const GUARDED_FIELDS = ['title', 'excerpt', 'seoTitle', 'metaDescription', 'callToAction', 'bodyMarkdown'] as const;
+
+const FIELD_LABELS: Record<(typeof GUARDED_FIELDS)[number], string> = {
+  title: 'title',
+  excerpt: 'excerpt',
+  seoTitle: 'SEO title',
+  metaDescription: 'meta description',
+  callToAction: 'call to action',
+  bodyMarkdown: 'body',
+};
+
+export interface ClaimNeutralization {
+  field: string;
+  claim: string;
+  note: string;
+}
 
 export interface ClaimGuardResult {
   output: ArticleOutput;
   notes: string[];
+  neutralizations: ClaimNeutralization[];
 }
 
 export function guardArticleClaims(output: ArticleOutput): ClaimGuardResult {
   const notes: string[] = [];
+  const neutralizations: ClaimNeutralization[] = [];
   const next: ArticleOutput = { ...output, unresolvedClaims: [...output.unresolvedClaims] };
 
   for (const field of GUARDED_FIELDS) {
@@ -56,10 +73,15 @@ export function guardArticleClaims(output: ArticleOutput): ClaimGuardResult {
           claim.toLowerCase().includes(rule.key.toLowerCase()),
         );
         if (!alreadyNoted) {
-          const note = `The ${field} used an unverified claim ("${rule.key}"). Neutral wording was substituted; confirm supporting evidence before publication.`;
+          const note = `The ${FIELD_LABELS[field]} used an unverified claim ("${rule.key}"). Neutral wording was substituted; confirm supporting evidence before publication.`;
           next.unresolvedClaims.push(note);
           notes.push(note);
         }
+        neutralizations.push({
+          field,
+          claim: rule.key,
+          note: `Neutral wording substituted in the ${FIELD_LABELS[field]}.`,
+        });
       }
       rule.pattern.lastIndex = 0;
     }
@@ -69,5 +91,5 @@ export function guardArticleClaims(output: ArticleOutput): ClaimGuardResult {
   if (next.unresolvedClaims.length > CONTENT_LIMITS.maxUnresolvedClaims) {
     next.unresolvedClaims = next.unresolvedClaims.slice(0, CONTENT_LIMITS.maxUnresolvedClaims);
   }
-  return { output: next, notes };
+  return { output: next, notes, neutralizations };
 }

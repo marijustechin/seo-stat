@@ -60,7 +60,7 @@ proposal that contradicts them fails verification instead of being debated.
 One task, one purpose. If a task mixes building, live verification, and
 record-keeping, split it.
 
-## Current state (through TASK-0013)
+## Current state (through TASK-0015)
 
 Implemented and live:
 
@@ -70,6 +70,8 @@ Implemented and live:
 - Content topics, briefs, and versioned article drafts with a claim guard
   (TASK-0007); information requirements, answers, and reusable project knowledge
   (TASK-0008).
+- Automatic gap resolution with a read-only per-run digest, so unanswered
+  requirements never block a draft (TASK-0015, ROADMAP-04).
 - Article cover images with explicit provider selection and no fallback:
   Cloudflare Workers AI, Google Gemini, OpenAI Images (TASK-0009, TASK-0011,
   TASK-0012).
@@ -79,10 +81,10 @@ Implemented and live:
   timer on the server (TASK-0003).
 
 **The unattended half does not exist.** There is no scheduler, no interval, no
-workflow execution, and no execution history, so nothing runs by itself. Every
-content step requires an explicit action, and every unknown is currently routed to
-the operator as a question. There is also **no link planning** and **no
-measurement**, both of which the product intent requires. There is **no
+workflow execution, and no execution history, so nothing runs by itself: every run
+still has to be started by hand. Article generation itself no longer asks the
+operator anything, because ROADMAP-04 is done. There is also **no link planning**
+and **no measurement**, both of which the product intent requires. There is **no
 authentication**; see [ADR-0009](decisions/ADR-0009-no-authentication.md).
 
 Per-task detail and evidence: [tasks/INDEX.md](../tasks/INDEX.md).
@@ -133,22 +135,21 @@ the definition and the schedule.
 
 ### ROADMAP-04 - Unattended resolution of information gaps
 
-**The direct fix for the failure that stopped this project.** Today the system
-asks; it must resolve. Implement the ladder from
-[ADR-0010](decisions/ADR-0010-unattended-content-pipeline.md) inside article
-generation and mark the point where a human answer is currently expected.
+**The direct fix for the failure that stopped this project.** The system asked; it
+now resolves. The ladder from
+[ADR-0010](decisions/ADR-0010-unattended-content-pipeline.md) is implemented in
+article generation, and the place where a human answer used to be expected is
+recorded in a digest instead.
 
+- **Done: TASK-0015** ([record](../tasks/TASK-0015-gap-resolution.md)), with the
+  digest mechanism fixed by
+  [ADR-0011](decisions/ADR-0011-gap-resolution-digest.md).
 - Depends on: nothing.
-- Size: M.
-- In scope: research-first resolution; rewriting so a claim is not needed;
-  neutral wording; recording what remains for post-publication verification; and
-  the non-blocking digest that replaces the question list.
-- Out of scope: removing the operator's ability to answer or exclude a
-  requirement. `answered` and `exclude` stay as optional input.
-- Open questions: where the digest is delivered (Run history, a digest view, or a
-  notification) and whether it is per run or per cycle.
-- Metric: the number of operator answers required before a draft can proceed,
-  from "many" to **0**.
+- Size: M (delivered).
+- Out of scope, and still true: the operator keeps the ability to answer or
+  exclude a requirement. `answered` and `exclude` remain optional input.
+- Metric: operator answers required before a draft can proceed, from "many" to
+  **0** (reported by TASK-0015).
 
 ### ROADMAP-05 - Link planning (internal and external)
 
@@ -314,6 +315,25 @@ instead of from the author's assertion.
 - Open questions: which facts are recorded automatically (commit sha, deployed
   sha, health result) and who may edit the record afterwards.
 
+## Follow-ups discovered while implementing
+
+### ROADMAP-16 - Enforce the documented research input bound on the Firecrawl path
+
+Found during TASK-0015 reconnaissance. `ANALYSIS_LIMITS.maxInputChars` (60 000) is
+applied only by the direct-fetch backend
+(`apps/api/src/modules/analysis/research/research.service.ts`); the Firecrawl
+backend never truncates the aggregate, so a single analysis run can return up to
+15 x 8 000 = 120 000 excerpt characters. The functional architecture states
+60 000 input characters as a shared bound, so on that path the documented limit and
+the behaviour disagree.
+
+- Depends on: nothing.
+- Size: S.
+- Note: this sits on the shared analysis path, so it is deliberately **not** part
+  of TASK-0015, which is scoped to article generation. The article path applies its
+  own per-run budget (`CONTENT_LIMITS.researchMaxInputChars`) regardless of
+  backend, so the content pipeline is bounded today.
+
 ## Open decisions to resolve
 
 Each of these blocks the item that depends on it, and each must be resolved as an
@@ -329,7 +349,6 @@ ADR before that item becomes a task.
 | Reporting reads live APIs versus stored snapshots | ROADMAP-10 | [docs/architecture.md](architecture.md) |
 | Report cadence, audience, and delivery channel | ROADMAP-10 | [docs/product.md](product.md) |
 | Authoritative keyword/topic sources for research | later content work | [docs/product.md](product.md) |
-| Digest delivery channel and cadence | ROADMAP-04 | this file |
 | URL inventory source for internal linking | ROADMAP-05 | this file |
 | Authentication and access control model | ROADMAP-12 | [docs/architecture.md](architecture.md) |
 

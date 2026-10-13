@@ -13,7 +13,9 @@ const JSON_EXAMPLE_TOPICS = JSON.stringify({
       callToAction: '...',
       relevance: '...',
       informationNeeded: '...',
-      informationRequirements: ['a specific question the writer must answer before writing'],
+      informationRequirements: [
+        'a specific question the writer resolves automatically; it is never a prerequisite and the operator is not asked to answer it',
+      ],
       objectiveAlignment: 'the specific stated objective this serves',
       priority: 'primary',
       sources: [{ url: '...', note: '...', retrievedAt: '...' }],
@@ -31,6 +33,14 @@ const JSON_EXAMPLE_ARTICLE = JSON.stringify({
   callToAction: '...',
   sources: [{ url: '...', note: '...', retrievedAt: '...' }],
   unresolvedClaims: ['...'],
+  gapResolutions: [
+    {
+      requirementId: 'req-0',
+      action: 'researched',
+      rationale: 'One sentence explaining what you did with this requirement.',
+      evidenceUrls: ['https://the-exact-url-you-used.example/page'],
+    },
+  ],
 });
 
 const COMMON_RULES = [
@@ -42,9 +52,12 @@ const COMMON_RULES = [
   'Keyword ideas are suggestions only; do not attach measured numbers.',
   'Do not present unverified or absolute claims (for example "zero landfill",',
   '"100%", "guaranteed", "certified", "carbon neutral", or superlatives) as',
-  'established facts, especially in titles, excerpts, SEO fields, or calls to',
-  'action. Use neutral wording or explicit qualification and list such claims',
-  'under unresolvedClaims for confirmation.',
+  'established facts, especially in titles, excerpts, SEO fields, calls to action,',
+  'or the article body. Use neutral wording or explicit qualification and list such',
+  'claims under unresolvedClaims so they can be verified later.',
+  'Never ask the operator a question and never wait for an answer. Unresolved',
+  'information is not a blocker: resolve it from the research, rewrite around it,',
+  'use neutral wording, or leave it out and record it.',
   'Do not copy competitor content. Return only a single JSON object with no prose around it.',
 ].join('\n');
 
@@ -79,8 +92,10 @@ export function buildTopicPrompt(
     'TASKS:',
     `1. Propose up to ${CONTENT_LIMITS.maxTopicsPerGeneration} content topics for this project.`,
     '2. For each: working title, intended audience, business objective, reader need, proposed',
-    '   angle, intended call to action, why it is relevant, and information needed before writing',
-    '   as a short list of specific informationRequirements (questions the writer must answer).',
+    '   angle, intended call to action, why it is relevant, and the information that would',
+    '   strengthen the article as a short list of specific informationRequirements. These are',
+    '   resolved automatically by the writer; they are not a prerequisite and the operator is',
+    '   never asked to answer them.',
     '3. For each topic set objectiveAlignment (the specific stated objective it serves) and',
     '   priority: "primary" when it directly serves the stated primary objective, otherwise',
     '   "secondary" or "supporting". Make alignment and priority visible; do not restrict',
@@ -94,16 +109,24 @@ export function buildTopicPrompt(
   return { system: COMMON_RULES, user };
 }
 
-function answersBlock(answers: BriefSnapshot['answers']): string {
-  if (!answers.length) return 'None.';
+/**
+ * Renders the topic's information gaps for the writer. The operator's answer and
+ * exclusion decisions are authoritative input; everything else is an instruction
+ * to resolve the gap automatically. Requirement ids are included so the writer can
+ * report its resolution per requirement.
+ */
+function gapsBlock(answers: BriefSnapshot['answers']): string {
+  if (!answers.length) return 'None. This topic carries no information requirements.';
   return answers
     .map((item) => {
-      if (item.state === 'exclude') return `- [exclude] ${item.question}: omit the corresponding claim from the article.`;
-      if (item.state === 'unknown') return `- [unknown] ${item.question}: do not invent an answer; treat it as unknown.`;
-      if (item.state === 'answered') {
-        return `- [answered] ${item.question}: ${item.answer ?? ''}${item.sourceUrl ? ` (source: ${item.sourceUrl})` : ''} — user-provided information, not independently verified.`;
+      const id = `id: ${item.id}`;
+      if (item.state === 'exclude') {
+        return `- [excluded] ${item.question} (${id}): the operator excluded this claim. Do not assert it anywhere.`;
       }
-      return `- [unanswered] ${item.question}: not provided.`;
+      if (item.state === 'answered') {
+        return `- [operator answer] ${item.question} (${id}): ${item.answer ?? ''}${item.sourceUrl ? ` (source: ${item.sourceUrl})` : ''} — provided by the operator, not independently verified. Use it, but never present it as verified evidence.`;
+      }
+      return `- [open] ${item.question} (${id}): no operator answer, and none will be requested. Resolve it from the research, otherwise rewrite so the claim is unnecessary, otherwise use neutral wording, otherwise leave it out.`;
     })
     .join('\n');
 }
@@ -137,8 +160,8 @@ export function buildArticlePrompt(
     `- Sources supplied: ${brief.sources.map((source) => source.url).join(', ') || '(none)'}`,
     `- Items needing confirmation: ${brief.confirmations.join('; ') || '(none)'}`,
     '',
-    'ANSWERS TO "NEEDED BEFORE WRITING" (user-provided; not independently verified):',
-    answersBlock(brief.answers),
+    'INFORMATION GAPS (the operator is not asked to answer any of these):',
+    gapsBlock(brief.answers),
     '',
     'REUSABLE USER-PROVIDED PROJECT KNOWLEDGE (attributed to the user; not independently verified):',
     knowledge.length ? knowledge.map((note) => `- ${note}`).join('\n') : 'None.',
@@ -149,16 +172,30 @@ export function buildArticlePrompt(
     'ACCESS FAILURES:',
     failures,
     '',
+    'GAP RESOLUTION (apply in this order, for every requirement marked "open"):',
+    '1. If the research above answers it, use the finding and cite the exact source URL.',
+    '2. Otherwise rewrite the article so the unsupported claim is unnecessary.',
+    '3. Otherwise use neutral wording that does not imply the fact is established.',
+    '4. Otherwise leave the claim out of the article entirely.',
+    'A failed, unreadable, or inconclusive source is not a reason to ask the operator;',
+    'continue with the content the evidence does support.',
+    'Neutral wording must not disguise an unsupported assertion. Uncertainty about a',
+    'certification, a collection-point locator, a named council or brand partnership, or',
+    'zero-landfill performance must not become an affirmative claim with softer adjectives.',
+    '',
     'TASKS:',
     'Write one article for the target audience and business outcome. Produce: title, short',
     'excerpt, Markdown body, proposed slug (lowercase-hyphenated), SEO title, meta description,',
     'call to action, source references, and material claims that require confirmation.',
     'Do not fabricate facts; if a claim is unsupported, list it under unresolvedClaims.',
-    'Do not assert unverified claims in the title, excerpt, SEO title, meta description, or',
-    'call to action; use neutral wording there and put the claim under unresolvedClaims.',
-    'For requirements marked "unknown" do not invent an answer; for those marked "exclude"',
-    'omit the corresponding claim. Use answered requirements and project knowledge as',
-    'user-provided context only, not as independently verified evidence.',
+    'Do not assert unverified claims in the title, excerpt, SEO title, meta description,',
+    'call to action, or body; use neutral wording and put the claim under unresolvedClaims.',
+    'For requirements marked "excluded" omit the corresponding claim. Use operator answers',
+    'and project knowledge as provided context only, not as independently verified evidence.',
+    'Report what you did with every "open" requirement under gapResolutions, keyed by its id',
+    '(for example "req-0"), with the action you took, a one-sentence rationale, and the exact',
+    'URLs you relied on. Leave evidenceUrls empty when the resolution did not depend on',
+    'research. Do not report a requirement you did not address.',
     `Limits: seoTitle ${CONTENT_LIMITS.seoTitle}, metaDescription ${CONTENT_LIMITS.metaDescription}, slug ${CONTENT_LIMITS.slug} characters.`,
     'Respond with json only, using exactly this shape:',
     JSON_EXAMPLE_ARTICLE,

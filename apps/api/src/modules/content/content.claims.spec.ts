@@ -13,6 +13,7 @@ function article(overrides: Partial<ArticleOutput>): ArticleOutput {
     callToAction: 'Contact us',
     sources: [],
     unresolvedClaims: [],
+    gapResolutions: [],
     ...overrides,
   };
 }
@@ -44,5 +45,24 @@ describe('guardArticleClaims', () => {
     const { output, notes } = guardArticleClaims(input);
     expect(output.title).toBe(input.title);
     expect(notes).toHaveLength(0);
+  });
+
+  it('neutralizes an unsupported claim inside the article body', () => {
+    const { output, neutralizations } = guardArticleClaims(
+      article({ bodyMarkdown: '# Reuse\n\nOur process is zero landfill and fully certified.' }),
+    );
+    expect(output.bodyMarkdown).not.toMatch(/zero[-\s]?landfill|certified/i);
+    expect(output.bodyMarkdown).toMatch(/landfill diversion/i);
+    expect(neutralizations.some((item) => item.field === 'bodyMarkdown')).toBe(true);
+  });
+
+  it('records a structured neutralization for every guarded field it changed', () => {
+    const { neutralizations } = guardArticleClaims(
+      article({ title: 'Zero landfill promise', seoTitle: 'Certified 100% recycling' }),
+    );
+    const fields = neutralizations.map((item) => item.field);
+    expect(fields).toContain('title');
+    expect(fields).toContain('seoTitle');
+    expect(neutralizations.every((item) => item.note.length > 0)).toBe(true);
   });
 });

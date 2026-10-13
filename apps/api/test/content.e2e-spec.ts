@@ -41,12 +41,34 @@ function topicSuggestion(index: number) {
   };
 }
 
+const DEFAULT_PAGE = {
+  source: 'website' as const,
+  url: 'https://example.com',
+  title: 'Home',
+  fetchedAt: '2026-01-01T00:00:00.000Z',
+  excerpt: 'We collect textiles.',
+};
+
+const DEFAULT_ARTICLE = {
+  title: 'Reuse and Zero Landfill Explained',
+  excerpt: 'Short excerpt.',
+  bodyMarkdown: '# Heading\n\nBody text.',
+  slug: 'generated-title',
+  seoTitle: 'SEO title',
+  metaDescription: 'Meta description.',
+  callToAction: 'Contact us',
+  sources: [{ url: 'https://example.com', note: 'home' }],
+  unresolvedClaims: ['Confirm collection coverage'],
+};
+
 class StubProvider extends AnalysisProvider {
   readonly providerId = 'stub';
   readonly model = 'stub-model';
   configured = true;
   fail = false;
   extraTopics = 0;
+  /** When set, the article call returns exactly this output. */
+  article: Record<string, unknown> | null = null;
 
   isConfigured(): boolean {
     return this.configured;
@@ -60,17 +82,7 @@ class StubProvider extends AnalysisProvider {
       return { output: { topics: Array.from({ length: count }, (_v, i) => topicSuggestion(i + 1)) }, inputTokens: 100, outputTokens: 50 };
     }
     return {
-      output: {
-        title: 'Reuse and Zero Landfill Explained',
-        excerpt: 'Short excerpt.',
-        bodyMarkdown: '# Heading\n\nBody text.',
-        slug: 'generated-title',
-        seoTitle: 'SEO title',
-        metaDescription: 'Meta description.',
-        callToAction: 'Contact us',
-        sources: [{ url: 'https://example.com', note: 'home' }],
-        unresolvedClaims: ['Confirm collection coverage'],
-      },
+      output: this.article ?? DEFAULT_ARTICLE,
       inputTokens: 200,
       outputTokens: 100,
     };
@@ -78,11 +90,14 @@ class StubProvider extends AnalysisProvider {
 }
 
 class StubResearch extends AnalysisResearch {
+  pages = [{ ...DEFAULT_PAGE }];
+  failures: Array<{ source: 'website' | 'competitor'; url: string; reason: string }> = [];
+
   async collect() {
     return {
-      pages: [{ source: 'website' as const, url: 'https://example.com', title: 'Home', fetchedAt: '2026-01-01T00:00:00.000Z', excerpt: 'We collect textiles.' }],
-      failures: [],
-      websiteReadable: true,
+      pages: this.pages,
+      failures: this.failures,
+      websiteReadable: this.pages.length > 0,
       backend: 'direct' as const,
       firecrawlCredits: null,
     };
@@ -130,6 +145,7 @@ describe('Content (integration, mocked provider)', () => {
   let runner: ContentRunner;
   const provider = new StubProvider();
   const imageProvider = new StubImageProvider();
+  const research = new StubResearch();
   const created: string[] = [];
   let assetDir: string;
 
@@ -168,7 +184,7 @@ describe('Content (integration, mocked provider)', () => {
       .overrideProvider(AnalysisProvider)
       .useValue(provider)
       .overrideProvider(AnalysisResearch)
-      .useValue(new StubResearch())
+      .useValue(research)
       .overrideProvider(ImageProvider)
       .useValue(imageProvider)
       .compile();
@@ -671,5 +687,218 @@ describe('Content (integration, mocked provider)', () => {
 
     imageProvider.authFailure = false;
     imageProvider.configured = false;
+  });
+
+  // --- Gap resolution (TASK-0015, ADR-0010, ADR-0011) ----------------------
+
+  const resetStubs = () => {
+    provider.article = null;
+    provider.fail = false;
+    provider.extraTopics = 0;
+    research.pages = [{ ...DEFAULT_PAGE }];
+    research.failures = [];
+  };
+
+  const startDraft = async (projectId: string, topicId: string) =>
+    waitForRun(projectId, (await call('POST', `/projects/${projectId}/content/topics/${topicId}/draft`)).json().id as string);
+
+  const makeTopic = async (projectId: string, title: string) =>
+    (await call('POST', `/projects/${projectId}/content/topics`, {
+      title,
+      audience: 'A',
+      objective: 'O',
+      angle: 'Angle',
+    })).json();
+
+  it('produces a draft and a gap digest when the operator answers nothing at all', async () => {
+    resetStubs();
+    const projectId = await createProject('Gaps Unanswered');
+    // The realistic path: generated topics carry open questions, and the
+    // operator answers none of them.
+    await waitForRun(projectId, (await call('POST', `/projects/${projectId}/content/topics/generate`)).json().id as string);
+    const topic = (await call('GET', `/projects/${projectId}/content/topics`)).json()[0] as {
+      id: string;
+      requirements: Array<{ state: string }>;
+    };
+    expect(topic.requirements.length).toBeGreaterThan(0);
+    expect(topic.requirements.every((item) => item.state === 'unanswered')).toBe(true);
+
+    // Criterion 8: nothing requires an answer before generating.
+    const started = await call('POST', `/projects/${projectId}/content/topics/${topic.id}/draft`);
+    expect(started.statusCode).toBe(201);
+    const run = await waitForRun(projectId, started.json().id as string);
+
+    // Criterion 1: a persisted draft, with no operator answers.
+    expect(run.status).toBe('completed');
+    const draftId = (run.result as { draftId: string }).draftId;
+
+    // Criterion 6: the digest is tied to the run and to the draft version.
+    expect(run.gapDigest).not.toBeNull();
+    expect(run.gapDigest.runId).toBe(run.id);
+    expect(run.gapDigest.draftId).toBe(draftId);
+    expect(run.gapDigest.draftVersion).toBe(1);
+    expect(run.gapDigest.counts.total).toBe(topic.requirements.length);
+    expect(run.gapDigest.counts.unresolved).toBe(topic.requirements.length);
+
+    // Criterion 6: it survives a reload and stays with the draft.
+    const draft = (await call('GET', `/projects/${projectId}/content/drafts/${draftId}`)).json();
+    expect(draft.gapDigest.runId).toBe(run.id);
+    expect(draft.gapDigest.draftVersion).toBe(1);
+    expect(draft.bodyMarkdown).toContain('Heading');
+
+    // Criterion 6: the list view carries it as well.
+    const fromList = ((await call('GET', `/projects/${projectId}/content/drafts`)).json() as Array<{
+      id: string;
+      gapDigest: { runId: string } | null;
+    }>).find((item) => item.id === draftId);
+    expect(fromList?.gapDigest?.runId).toBe(run.id);
+  });
+
+  it('records research provenance and honours an operator answer and exclusion', async () => {
+    resetStubs();
+    const projectId = await createProject('Gaps Researched');
+    const topic = await makeTopic(projectId, 'Evidence topic');
+    await call('PUT', `/projects/${projectId}/content/topics/${topic.id}/brief`, {
+      answers: [
+        { id: 'r1', question: 'Does the service cover Vilnius?', answer: null, sourceUrl: null, state: 'unanswered' },
+        { id: 'r2', question: 'Can you collect batteries?', answer: 'Yes, on request.', sourceUrl: 'https://example.com/batteries', state: 'answered' },
+        { id: 'r3', question: 'Are you ISO certified?', answer: null, sourceUrl: null, state: 'exclude' },
+      ],
+    });
+    research.pages = [
+      { source: 'website' as const, url: 'https://example.com/coverage', title: 'Coverage', fetchedAt: '2026-02-02T00:00:00.000Z', excerpt: 'We cover Vilnius.' },
+    ];
+    provider.article = {
+      ...DEFAULT_ARTICLE,
+      gapResolutions: [
+        { requirementId: 'r1', action: 'researched', rationale: 'The coverage page lists Vilnius.', evidenceUrls: ['https://example.com/coverage'] },
+        { requirementId: 'r2', action: 'researched', rationale: 'Claimed without a retrieved source.', evidenceUrls: ['https://example.com/not-retrieved'] },
+        { requirementId: 'r3', action: 'neutral', rationale: 'The model tried to override the operator.', evidenceUrls: [] },
+      ],
+    };
+
+    const run = await startDraft(projectId, topic.id);
+    expect(run.status).toBe('completed');
+    const byId = new Map<string, Record<string, never>>(
+      (run.gapDigest.records as Array<{ requirementId: string }>).map((item) => [item.requirementId, item as never]),
+    );
+    const record = (id: string) => byId.get(id) as unknown as {
+      action: string;
+      operatorAnswer: string | null;
+      operatorSourceUrl: string | null;
+      evidence: Array<{ url: string; retrievedAt?: string }>;
+    };
+
+    // Criterion 2: a researched resolution with real provenance.
+    expect(record('r1').action).toBe('researched');
+    expect(record('r1').evidence).toHaveLength(1);
+    expect(record('r1').evidence[0]?.url).toBe('https://example.com/coverage');
+    expect(record('r1').evidence[0]?.retrievedAt).toBe('2026-02-02T00:00:00.000Z');
+
+    // Criterion 5: the operator's answer wins, and an unretrieved URL is never
+    // presented as verified evidence.
+    expect(record('r2').action).toBe('operator_answer');
+    expect(record('r2').operatorAnswer).toBe('Yes, on request.');
+    expect(record('r2').operatorSourceUrl).toBe('https://example.com/batteries');
+
+    // Criterion 5: the exclusion holds even when the model reports otherwise.
+    expect(record('r3').action).toBe('excluded');
+  });
+
+  it('completes with supported content when research cannot resolve anything', async () => {
+    resetStubs();
+    const projectId = await createProject('Gaps Inconclusive');
+    const topic = await makeTopic(projectId, 'Inconclusive topic');
+    await call('PUT', `/projects/${projectId}/content/topics/${topic.id}/brief`, {
+      answers: [
+        { id: 'r1', question: 'What is the exact tonnage?', answer: null, sourceUrl: null, state: 'unknown' },
+        { id: 'r2', question: 'Do you serve councils?', answer: null, sourceUrl: null, state: 'unanswered' },
+      ],
+    });
+    // Every source is unreachable and no page is retrieved at all.
+    research.pages = [];
+    research.failures = [{ source: 'website' as const, url: 'https://example.com', reason: 'Fetch failed.' }];
+    provider.article = { ...DEFAULT_ARTICLE, bodyMarkdown: '# Heading\n\nBody without the missing facts.' };
+
+    const run = await startDraft(projectId, topic.id);
+
+    // Criterion 3: an inaccessible source is not a blocking question.
+    expect(run.status).toBe('completed');
+    expect(run.gapDigest.counts.unresolved).toBe(2);
+    expect(run.gapDigest.budget.usedPages).toBe(0);
+    expect(run.gapDigest.records.every((item: { action: string }) => item.action === 'unresolved')).toBe(true);
+
+    const draft = (await call('GET', `/projects/${projectId}/content/drafts/${(run.result as { draftId: string }).draftId}`)).json();
+    expect(draft.bodyMarkdown).toContain('Body without the missing facts');
+    expect(draft.status).toBe('draft');
+  });
+
+  it('neutralizes unsupported claims in every field and records them in the digest', async () => {
+    resetStubs();
+    const projectId = await createProject('Gaps Claims');
+    const topic = await makeTopic(projectId, 'Claims topic');
+
+    // Criterion 4: a certification and a zero-landfill claim must not survive
+    // as affirmative statements, in the body or in the presentation fields.
+    provider.article = {
+      ...DEFAULT_ARTICLE,
+      title: 'Zero Landfill promise',
+      callToAction: 'Get guaranteed results',
+      bodyMarkdown: '# Heading\n\nWe are certified and run a zero landfill service.',
+    };
+
+    const run = await startDraft(projectId, topic.id);
+    expect(run.status).toBe('completed');
+    const draft = (await call('GET', `/projects/${projectId}/content/drafts/${(run.result as { draftId: string }).draftId}`)).json();
+
+    expect(draft.title).not.toMatch(/zero[-\s]?landfill/i);
+    expect(draft.callToAction).not.toMatch(/guaranteed/i);
+    expect(draft.bodyMarkdown).not.toMatch(/zero[-\s]?landfill|certified/i);
+
+    const fields = (run.gapDigest.neutralizedClaims as Array<{ field: string }>).map((item) => item.field);
+    expect(fields).toContain('bodyMarkdown');
+    expect(fields).toContain('title');
+  });
+
+  it('keeps each version and its own digest when regenerating', async () => {
+    resetStubs();
+    const projectId = await createProject('Gaps Regen');
+    const topic = await makeTopic(projectId, 'Gap regen topic');
+    await call('PUT', `/projects/${projectId}/content/topics/${topic.id}/brief`, {
+      answers: [{ id: 'r1', question: 'Open question', answer: null, sourceUrl: null, state: 'unanswered' }],
+    });
+
+    const first = await startDraft(projectId, topic.id);
+    const second = await startDraft(projectId, topic.id);
+    expect((first.result as { version: number }).version).toBe(1);
+    expect((second.result as { version: number }).version).toBe(2);
+
+    // Criterion 7: regeneration preserves the previous version and its history.
+    const firstDraft = (await call('GET', `/projects/${projectId}/content/drafts/${(first.result as { draftId: string }).draftId}`)).json();
+    const secondDraft = (await call('GET', `/projects/${projectId}/content/drafts/${(second.result as { draftId: string }).draftId}`)).json();
+    expect(firstDraft.gapDigest.runId).toBe(first.id);
+    expect(secondDraft.gapDigest.runId).toBe(second.id);
+    expect(firstDraft.gapDigest.runId).not.toBe(secondDraft.gapDigest.runId);
+    expect(firstDraft.gapDigest.draftVersion).toBe(1);
+    expect(secondDraft.gapDigest.draftVersion).toBe(2);
+  });
+
+  it('still fails truthfully when the model output is unusable', async () => {
+    resetStubs();
+    const projectId = await createProject('Gaps Malformed');
+    const topic = await makeTopic(projectId, 'Malformed topic');
+    provider.article = { title: 'Incomplete output' };
+
+    const run = await startDraft(projectId, topic.id);
+
+    // Criterion 10: removing the information gates must not turn a technical
+    // failure into a fake success.
+    expect(run.status).toBe('failed');
+    expect(run.error).toBeTruthy();
+    expect(run.gapDigest).toBeNull();
+    expect(run.result).toBeNull();
+
+    const drafts = (await call('GET', `/projects/${projectId}/content/drafts`)).json() as Array<{ topicId: string }>;
+    expect(drafts.filter((item) => item.topicId === topic.id)).toHaveLength(0);
   });
 });

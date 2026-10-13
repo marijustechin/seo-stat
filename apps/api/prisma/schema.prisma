@@ -272,6 +272,8 @@ model ContentRun {
   inputSnapshot    Json      @map("input_snapshot")
   evidence         Json?
   result           Json?
+  /// Read-only gap resolution digest of an article generation run (ADR-0011).
+  gapDigest        Json?     @map("gap_digest")
   error            String?
   provider         String?
   model            String?

@@ -33,8 +33,12 @@ export function AnswersEditor({
   if (requirements.length === 0) {
     return (
       <div className="field">
-        <span>Needed before writing</span>
+        <span>Information the writer resolves automatically</span>
         <p className="muted">No information requirements on this topic.</p>
+        <p className="muted">
+          Answers are optional. Unresolved items are handled automatically and recorded in the
+          draft&apos;s gap report.
+        </p>
         <button
           type="button"
           className="button cursor-pointer"
@@ -49,11 +53,15 @@ export function AnswersEditor({
   return (
     <div className="field">
       <div className="run-head">
-        <span>Needed before writing</span>
+        <span>Information the writer resolves automatically</span>
         <button type="button" className="button cursor-pointer" onClick={() => setExpanded((value) => !value)}>
           {expanded ? 'Hide answers' : 'Show answers'}
         </button>
       </div>
+      <p className="muted">
+        Answers are optional. Unresolved items are handled automatically and recorded in the
+        draft&apos;s gap report.
+      </p>
       {expanded &&
         requirements.map((item, index) => (
           <div className="segment" key={item.id}>
@@ -94,7 +102,7 @@ export function AnswersEditor({
                       : state === 'answered'
                         ? 'Answered'
                         : state === 'unknown'
-                          ? 'Unknown (do not invent an answer)'
+                          ? 'Leave open (do not invent)'
                           : 'Exclude this claim from the article'}
                   </option>
                 ))}

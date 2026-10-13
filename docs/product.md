@@ -47,6 +47,12 @@ project management, system settings, and aggregate costs. See
   answer (answered/unknown/exclude); an answer can be kept as reusable project
   knowledge included in later drafts, and drafts generated from an earlier brief
   are flagged stale.
+- Article generation resolves information gaps automatically, in this order:
+  resolve from research, rewrite so the claim is unnecessary, use neutral wording,
+  or leave it out. Every run stores a read-only gap report describing what was
+  resolved with which source, what was rewritten or omitted, and what remains to
+  verify. Unanswered questions never block a draft, and the operator is never asked
+  to answer before generation.
 - Article cover images per draft: generate from a visual brief with an explicitly
   selected provider and no fallback (Cloudflare Workers AI FLUX.1 [schnell] on the
   free plan, Google Gemini, or OpenAI Images) or upload; selected image, alt text,
@@ -78,7 +84,10 @@ In scope:
 
 - Project management and per-project settings.
 - Content research and article generation producing reviewable drafts.
-- A configurable publishing mode (`review` or `automatic`), defaulting to review.
+- A configurable publishing mode (`review` or `automatic`), defaulting to
+  `automatic` for the content pipeline once the project's analysis and interval
+  are approved, with `review` available as a per-project opt-in
+  ([ADR-0010](decisions/ADR-0010-unattended-content-pipeline.md)).
 - Durable records of generated items and their publication state.
 - A simple performance report.
 

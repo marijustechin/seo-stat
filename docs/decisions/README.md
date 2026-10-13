@@ -67,6 +67,7 @@ IDs are `ADR-NNNN`, allocated in order, never reused. File name:
 | [ADR-0008](ADR-0008-review-policy-and-idempotency.md) | Review-first publishing policy with idempotent external actions | amended by ADR-0010 (default mode only) |
 | [ADR-0009](ADR-0009-no-authentication.md) | No authentication in the current deployment | accepted (limitation) |
 | [ADR-0010](ADR-0010-unattended-content-pipeline.md) | Unattended content pipeline as the default operating model | accepted |
+| [ADR-0011](ADR-0011-gap-resolution-digest.md) | Gap resolution digest: one record per article run, read-only, non-blocking | accepted |
 
 ## Related
 

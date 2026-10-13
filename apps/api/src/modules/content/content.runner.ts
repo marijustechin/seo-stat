@@ -13,7 +13,9 @@ import {
 } from './content.schemas.js';
 import { buildArticlePrompt, buildTopicPrompt } from './content.prompts.js';
 import { guardArticleClaims } from './content.claims.js';
-import type { BriefSnapshot, ContentSettingsSnapshot } from './content.types.js';
+import { applyResearchBudget } from './content.research.js';
+import { assembleGapDigest } from './content.digest.js';
+import type { BriefSnapshot, ContentSettingsSnapshot, GapDigest } from './content.types.js';
 
 function estimateCost(inputTokens: number, outputTokens: number): number | null {
   const inputPrice = Number.parseFloat(process.env.ANALYSIS_COST_INPUT_PER_MTOK ?? '');
@@ -158,7 +160,8 @@ export class ContentRunner implements OnModuleInit {
   ): Promise<void> {
     const resolvedTopicId = run.topicId ?? '';
     const snapshot = run.inputSnapshot as unknown as ArticleSnapshot;
-    const research = await this.research.collect(snapshot.research);
+    const retrieved = await this.research.collect(snapshot.research);
+    const { research, budget } = applyResearchBudget(retrieved);
     const { system, user } = buildArticlePrompt(snapshot.settings, snapshot.brief, research, snapshot.knowledge ?? []);
     const model = await this.provider.analyze({
       system,
@@ -168,7 +171,8 @@ export class ContentRunner implements OnModuleInit {
       maxOutputTokens: CONTENT_LIMITS.maxOutputTokensArticle,
     });
     const parsed = parseArticleOutput(model.output);
-    const { output } = guardArticleClaims(parsed);
+    const guarded = guardArticleClaims(parsed);
+    const output = guarded.output;
 
     const brief = await this.prisma.articleBrief.findFirst({ where: { projectId: run.projectId, topicId: resolvedTopicId } });
     const aggregate = await this.prisma.articleDraft.aggregate({
@@ -197,13 +201,25 @@ export class ContentRunner implements OnModuleInit {
         generationRunId: runId,
       },
     });
-    await this.complete(runId, model, { draftId: draft.id, version }, {
-      backend: research.backend,
-      firecrawlCredits: research.firecrawlCredits,
-      pages: research.pages,
-      failures: research.failures,
-      websiteReadable: research.websiteReadable,
+    const digest = assembleGapDigest({
+      runId,
+      draftId: draft.id,
+      draftVersion: version,
+      requirements: snapshot.brief.answers ?? [],
+      modelResolutions: parsed.gapResolutions,
+      retrievedPages: retrieved.pages,
+      neutralizedClaims: guarded.neutralizations,
+      budget,
+      generatedAt: new Date().toISOString(),
     });
+
+    await this.complete(runId, model, { draftId: draft.id, version }, {
+      backend: retrieved.backend,
+      firecrawlCredits: retrieved.firecrawlCredits,
+      pages: retrieved.pages,
+      failures: retrieved.failures,
+      websiteReadable: retrieved.websiteReadable,
+    }, digest);
     await this.prisma.contentRun.update({ where: { id: runId }, data: { draftId: draft.id } });
   }
 
@@ -212,6 +228,7 @@ export class ContentRunner implements OnModuleInit {
     model: { inputTokens: number; outputTokens: number },
     result: Record<string, unknown>,
     evidence?: Record<string, unknown>,
+    gapDigest?: GapDigest,
   ): Promise<void> {
     await this.prisma.contentRun.update({
       where: { id: runId },
@@ -225,6 +242,7 @@ export class ContentRunner implements OnModuleInit {
         estimatedCostUsd: estimateCost(model.inputTokens, model.outputTokens),
         result: result as unknown as Prisma.InputJsonValue,
         ...(evidence ? { evidence: evidence as unknown as Prisma.InputJsonValue } : {}),
+        ...(gapDigest ? { gapDigest: gapDigest as unknown as Prisma.InputJsonValue } : {}),
         error: null,
       },
     });

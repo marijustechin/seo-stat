@@ -4,6 +4,51 @@ export interface SourceRef {
   retrievedAt?: string;
 }
 
+export type GapAction =
+  | 'researched'
+  | 'rewritten'
+  | 'neutral'
+  | 'excluded'
+  | 'operator_answer'
+  | 'unresolved';
+
+export interface GapRecord {
+  requirementId: string;
+  question: string;
+  operatorState: 'unanswered' | 'answered' | 'unknown' | 'exclude';
+  operatorAnswer: string | null;
+  operatorSourceUrl: string | null;
+  action: GapAction;
+  rationale: string;
+  evidence: SourceRef[];
+  remainingUncertainty: string | null;
+}
+
+export interface GapDigest {
+  runId: string;
+  draftId: string | null;
+  draftVersion: number | null;
+  generatedAt: string;
+  counts: {
+    total: number;
+    researched: number;
+    rewritten: number;
+    neutral: number;
+    excluded: number;
+    operatorAnswer: number;
+    unresolved: number;
+  };
+  budget: {
+    maxPages: number;
+    usedPages: number;
+    droppedPages: number;
+    maxInputChars: number;
+    usedInputChars: number;
+  };
+  records: GapRecord[];
+  neutralizedClaims: Array<{ field: string; claim: string; note: string }>;
+}
+
 export interface TopicRequirement {
   id: string;
   question: string;
@@ -102,6 +147,7 @@ export interface ArticleDraft {
   callToAction: string | null;
   sources: SourceRef[];
   unresolvedClaims: string[];
+  gapDigest: GapDigest | null;
   generationRunId: string | null;
   savedAt: string | null;
   stale: boolean;
@@ -119,6 +165,7 @@ export interface ContentRun {
   inputSnapshot: unknown;
   evidence: unknown;
   result: unknown;
+  gapDigest: GapDigest | null;
   error: string | null;
   provider: string | null;
   model: string | null;

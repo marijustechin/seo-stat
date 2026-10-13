@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { listAnalyses } from '@/entities/analysis/api';
 import { listContentRuns } from '@/entities/content/api';
+import type { GapDigest } from '@/entities/content/model';
+import { GapDigestPanel } from '@/features/content-workspace/ui/gap-digest';
 import { useProject } from '@/widgets/project-workspace/project-context';
 
 interface Entry {
@@ -15,6 +17,7 @@ interface Entry {
   usage: string;
   cost: string;
   detail: string | null;
+  gapDigest?: GapDigest | null;
 }
 
 function usage(input: number | null, output: number | null): string {
@@ -58,6 +61,7 @@ export function ProjectRunHistory() {
           usage: usage(run.inputTokens, run.outputTokens),
           cost: cost(run.estimatedCostUsd),
           detail: run.error,
+          gapDigest: run.gapDigest ?? null,
         })),
       ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       setEntries(merged);
@@ -121,6 +125,7 @@ export function ProjectRunHistory() {
                     </div>
                   )}
                 </dl>
+                <GapDigestPanel digest={entry.gapDigest ?? null} />
               </li>
             ))}
           </ul>

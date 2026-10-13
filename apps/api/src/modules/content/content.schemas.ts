@@ -26,6 +26,13 @@ const topicsOutput = z.strictObject({
   topics: z.array(topic).min(1).max(CONTENT_LIMITS.maxTopicsPerGeneration),
 });
 
+const gapResolution = z.strictObject({
+  requirementId: z.string().max(100),
+  action: z.enum(['researched', 'rewritten', 'neutral', 'unresolved']),
+  rationale: z.string().max(CONTENT_LIMITS.gapRationale),
+  evidenceUrls: z.array(z.string().max(2048)).max(CONTENT_LIMITS.gapEvidenceUrls),
+});
+
 const articleOutput = z.strictObject({
   title: z.string().max(CONTENT_LIMITS.title),
   excerpt: z.string().max(CONTENT_LIMITS.excerpt),
@@ -36,11 +43,17 @@ const articleOutput = z.strictObject({
   callToAction: z.string().max(CONTENT_LIMITS.callToAction),
   sources: z.array(sourceRef).max(CONTENT_LIMITS.maxSources),
   unresolvedClaims: z.array(z.string().max(500)).max(CONTENT_LIMITS.maxUnresolvedClaims),
+  /**
+   * Optional so an older or terser model answer still produces an article. When
+   * it is absent the digest records every open requirement as `unresolved`.
+   */
+  gapResolutions: z.array(gapResolution).max(CONTENT_LIMITS.maxGapResolutions).default([]),
 });
 
 export type TopicSuggestion = z.infer<typeof topic>;
 export type TopicsOutput = z.infer<typeof topicsOutput>;
 export type ArticleOutput = z.infer<typeof articleOutput>;
+export type ModelGapResolution = z.infer<typeof gapResolution>;
 
 function clampArray(container: unknown, key: string, max: number): void {
   if (!container || typeof container !== 'object') return;
@@ -63,6 +76,10 @@ export function parseArticleOutput(value: unknown): ArticleOutput {
     const record = value as Record<string, unknown>;
     clampArray(record, 'sources', CONTENT_LIMITS.maxSources);
     clampArray(record, 'unresolvedClaims', CONTENT_LIMITS.maxUnresolvedClaims);
+    clampArray(record, 'gapResolutions', CONTENT_LIMITS.maxGapResolutions);
+    if (Array.isArray(record.gapResolutions)) {
+      for (const item of record.gapResolutions) clampArray(item, 'evidenceUrls', CONTENT_LIMITS.gapEvidenceUrls);
+    }
   }
   return articleOutput.parse(value);
 }
