@@ -177,5 +177,13 @@ limitation, not as a verified result.
 - Implementation: complete
 - Verification: complete for unit, end-to-end, typecheck, lint, and build;
   **browser verification not performed** (no browser access in this environment)
-- Commit: not committed
-- Deployment: not deployed
+- Commit: committed on `main` as `8850ce2`. CI run 38400683139 reported `success`
+  for both `Harness validation` and `Application`; the application job installs the
+  workspace, typechecks, lints, builds, tests, applies the migration, and runs the
+  end-to-end suite against PostgreSQL.
+- Deployment: **not verified.** The systemd user timer deploys every successful
+  `main` build, and the deployed application answered `GET /seo-stat/api/health`
+  with 200 (`database: "up"`) at 2026-10-13T12:56:55Z, so the service is running.
+  The running release could not be identified, because neither the health endpoint
+  nor `system/status` exposes a release identifier (ROADMAP-15); whether the timer
+  had already picked up `8850ce2` at that moment is therefore unknown.
