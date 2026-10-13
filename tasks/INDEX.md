@@ -14,3 +14,5 @@
 | [TASK-0010](TASK-0010-wordpress-integration-export.md) | Project-scoped WordPress integration and article export | completed |
 | [TASK-0011](TASK-0011-cloudflare-image-provider.md) | Cloudflare Workers AI cover generation (FLUX.1 Schnell) | completed |
 | [TASK-0012](TASK-0012-gemini-image-provider.md) | Google Gemini image provider and responsive cover previews | completed |
+| [TASK-0013](TASK-0013-architect-handoff.md) | Architect handoff: roadmap, decision records, and consult protocol | completed |
+| [TASK-0014](TASK-0014-unattended-operating-model.md) | Unattended operating model: decision record and roadmap correction | completed |

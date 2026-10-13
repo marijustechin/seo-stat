@@ -31,7 +31,9 @@ apps/web             Next.js UI (src: app, widgets, features, entities, shared)
 apps/api             NestJS API (src: modules, database, config) + Prisma
                      migrations (projects table)
 deploy/              systemd user units, deploy scripts, nginx include, bootstrap
-docs/                product, architecture, deployment notes
+docs/                product, architecture, deployment notes; ROADMAP.md is the
+                     planning entry point; decisions/ holds ADRs; consult/ holds
+                     outside-opinion packets
 tasks/               task lifecycle, template, records, index
 scripts/             harness validation and subpath smoke test (no dependencies)
 ```
@@ -84,10 +86,16 @@ Actions tab.
 
 ## Next steps
 
+Planning starts at [docs/ROADMAP.md](docs/ROADMAP.md): the current state, the
+ordered backlog, and the open decisions that block each item. Settled decisions
+and their rationale are in [docs/decisions/](docs/decisions/README.md), and a
+decision that needs an outside opinion becomes a packet in
+[docs/consult/](docs/consult/README.md).
+
 - Configure the analysis provider (`DEEPSEEK_API_KEY`) to enable website and
   competitor analysis, and optionally `FIRECRAWL_API_KEY` for the preferred
   research backend (see `docs/deployment.md`).
-- Build project-scoped content, workflow definitions, schedules, and execution
-  history (see `docs/functional-architecture.md`).
-- Credentials, external publishing, and article generation remain later
-  integrations.
+- Build project-scoped workflow definitions, schedules, and execution history,
+  then publishing and reporting (see `docs/ROADMAP.md`).
+- Credentials for further channels, external publishing beyond the WordPress
+  draft export, and reporting remain later integrations.

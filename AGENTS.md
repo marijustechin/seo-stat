@@ -42,15 +42,41 @@ validator enforces the version, ESM, and port rules mechanically.
 - Preserve existing work. Inspect before editing.
 - Credentials and secrets must stay outside tracked files (see `.gitignore`;
   real values live in untracked env files or the server secret store).
-- Publishing mode is configurable per workflow: `review` (human approval before
-  any external action) or `automatic`. Default to `review`.
+- The content pipeline is **unattended by default**. The operator's only mandatory
+  gate is one approval per project (the analysis and the publication interval).
+  After that, zero routine operator actions per published article: see
+  `docs/decisions/ADR-0010-unattended-content-pipeline.md`.
+- `review` (human approval before any external action) remains available as a
+  per-project opt-in. It is not the default.
+- An uncertainty must never become a blocking question. Resolve it by research,
+  then by rewriting so the claim is not needed, then by publishing with neutral
+  wording, and otherwise record it for post-publication verification. Unresolved
+  items go into a non-blocking digest.
+- Quality is judged after publication by measurement, with reversal (edit,
+  retract, regenerate) as the correction path.
 - External actions must record their result and must be idempotent: never publish
-  the same item twice.
+  the same item twice. Reversal is an external action with its own record.
 - A failed step must be recoverable without repeating already-successful
   publication steps.
 - Scheduling must explicitly handle timezone, server downtime, and missed runs.
 - Record implementation, verification, commit, and deployment states separately.
   Never describe uncommitted or undeployed work as committed or deployed.
+
+## Planning and decision records
+
+Planning starts from `docs/ROADMAP.md`: the current state, the ordered intents,
+and the open decisions that block them. An intent becomes work only as a task
+record.
+
+- `AGENTS.md` stays the authoritative rule list. A settled decision is explained
+  once in `docs/decisions/` as an ADR with its rationale, consequences, and the
+  condition for reopening it. An ADR never overrides this file; if the two
+  disagree, this file wins and the ADR is corrected.
+- A decision that needs an outside opinion is written as a packet in
+  `docs/consult/` and answered in that same file, so the reasoning is durable and
+  reviewable.
+- Durable decisions live in this repository, not in a chat, a pasted report, or an
+  issue comment. If it must be remembered, it is a file.
 
 ## Verification
 
