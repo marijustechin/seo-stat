@@ -156,5 +156,12 @@ limitation applies to TASK-0015 and is recorded there.
 - Implementation: complete
 - Verification: complete for unit, end-to-end, typecheck, lint, and build;
   **browser verification not performed** (no browser access in this environment)
-- Commit: not committed
-- Deployment: not deployed
+- Commit: committed on `main` as `92c605c`. CI run 38404125039 reported `success`
+  for both `Harness validation` and `Application`, the latter with zero
+  annotations; it installs the workspace, typechecks, lints, builds, tests, applies
+  the migration, and runs the end-to-end suite against PostgreSQL.
+- Deployment: **not verified.** The systemd user timer deploys every successful
+  `main` build, and the deployed application answered `GET /seo-stat/api/health`
+  with 200 (`database: "up"`) at 2026-10-13T13:23:25Z, so the service is running.
+  The running release could not be identified, because neither the health endpoint
+  nor `system/status` exposes a release identifier (ROADMAP-15).
