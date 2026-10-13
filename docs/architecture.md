@@ -44,7 +44,9 @@ architecture.
     official `@google/genai` SDK, or OpenAI Images), and their asynchronous
     generation runs. Article generation resolves information gaps through a
     research/rewrite/neutral-wording ladder and stores a read-only gap resolution
-    digest per run (`content.digest.ts`, `content.research.ts`).
+    digest per run (`content.digest.ts`, `content.research.ts`). Link planning
+    (`content.links.ts`) gives the writer only real project URLs and removes any
+    link it cannot justify.
   - `src/modules/integrations` - project-scoped external integrations: the
     WordPress connection (encrypted credentials, connection test) and explicit
     article-draft export to a WordPress draft with reliable external-action
@@ -100,6 +102,9 @@ WordPress draft export) exists yet.
   a per-project opt-in, and every article run records a read-only gap resolution
   digest; see `docs/decisions/ADR-0010-unattended-content-pipeline.md` and
   `docs/decisions/ADR-0011-gap-resolution-digest.md`.
+- Link planning: an internal link may target only a page from the project's own URL
+  list, and an external link only a page retrieved during the same run; see
+  `docs/decisions/ADR-0012-link-justification.md`.
 - Integration credentials: stored server-side with authenticated encryption
   (AES-256-GCM) under a deployment-managed key outside the release directories;
   never returned to the browser or written to logs/errors.

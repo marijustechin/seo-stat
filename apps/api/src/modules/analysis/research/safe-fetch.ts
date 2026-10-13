@@ -63,7 +63,7 @@ function requestOnce(url: URL, redirectsLeft: number): Promise<SafeFetchResult> 
         method: 'GET',
         headers: {
           'user-agent': 'seo-stat-analysis/1.0 (+local tooling)',
-          accept: 'text/html,application/xhtml+xml,text/plain;q=0.8',
+          accept: 'text/html,application/xhtml+xml,application/xml,text/xml,text/plain;q=0.8',
         },
         lookup: safeLookup as never,
         timeout: ANALYSIS_LIMITS.requestTimeoutMs,
@@ -93,7 +93,9 @@ function requestOnce(url: URL, redirectsLeft: number): Promise<SafeFetchResult> 
           return;
         }
         const contentType = String(response.headers['content-type'] ?? '');
-        if (contentType && !/text\/html|text\/plain|xhtml/i.test(contentType)) {
+        // XML is allowed so a project sitemap can be read with the same
+        // SSRF-protected, size- and time-bounded fetch as a page.
+        if (contentType && !/text\/html|text\/plain|xhtml|xml/i.test(contentType)) {
           response.resume();
           reject(new SafeFetchError('unsupported-content', `Unsupported content type: ${contentType}`));
           return;

@@ -17,3 +17,4 @@
 | [TASK-0013](TASK-0013-architect-handoff.md) | Architect handoff: roadmap, decision records, and consult protocol | completed |
 | [TASK-0014](TASK-0014-unattended-operating-model.md) | Unattended operating model: decision record and roadmap correction | completed |
 | [TASK-0015](TASK-0015-gap-resolution.md) | Resolve article information gaps without operator intervention | completed |
+| [TASK-0016](TASK-0016-internal-external-links.md) | Internal and external link planning | completed |

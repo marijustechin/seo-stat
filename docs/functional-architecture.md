@@ -209,6 +209,33 @@ implements [ADR-0010](decisions/ADR-0010-unattended-content-pipeline.md).
   failure (provider, database, or unusable model output) still fails the run
   truthfully and writes no draft.
 
+## Link planning (implemented, TASK-0016)
+
+The writer places internal and external links, but only links it can justify
+([ADR-0012](decisions/ADR-0012-link-justification.md)). The requirement is modest
+by design: an article about wholesale should link to the wholesale page, to the
+contact page, and perhaps to one external source.
+
+- **Internal targets** come from the project's own URL list, read once per run from
+  `sitemap.xml` (following a sitemap index for at most two child sitemaps), or from
+  the pages the research already retrieved when there is no usable sitemap. Paths
+  that are never useful targets (feeds, tags, authors, search, pagination, date
+  archives, WordPress internals) are excluded, duplicates are removed, and shallower
+  paths are preferred. The list is bounded at
+  `CONTENT_LIMITS.linkCandidates`, and the cap is reported when it bites.
+- **External targets** may only be URLs retrieved during the same run, which is the
+  provenance rule already used for claims.
+- **Anything else is removed**: the anchor text stays, the URL goes, and the removal
+  with its reason is recorded on the run. Images, `mailto:`, `tel:`, and fragments
+  are not link targets and are left untouched.
+- **No list means no internal links.** A project with no sitemap and no retrievable
+  pages gets articles without internal links, recorded rather than guessed.
+- **The record** is `ContentRun.linkPlan`: where the list came from, how many
+  candidates were found and left out, which links were kept, and which were removed
+  with reasons. It is read-only and non-blocking, like the gap digest.
+- Out of scope by decision: a crawl, a maintained URL index, link-graph analysis,
+  and per-page relevance scoring.
+
 ## Article cover images (implemented, TASK-0009)
 
 - A draft can have cover images: generated from a visual brief or uploaded
@@ -308,7 +335,6 @@ disconnect; it shows configured/unconfigured and connection-test states.
 ## Planned capabilities (not implemented)
 
 - Workflow definitions, schedules, and execution history.
-- Link planning (internal and external links) for generated articles.
 - LinkedIn publishing and external integrations beyond the WordPress draft export.
 - Metrics, reports, and aggregate costs.
 

@@ -16,6 +16,7 @@ import {
 } from '../src/modules/analysis/ai/ai-provider.js';
 import { AnalysisResearch } from '../src/modules/analysis/research/research.port.js';
 import { ContentRunner } from '../src/modules/content/content.runner.js';
+import { ContentLinkSource } from '../src/modules/content/content.links.js';
 import { ImageProvider, ImageProviderError } from '../src/modules/content/image.provider.js';
 
 // A 1x1 PNG (valid signature + IHDR), used to exercise upload and generation paths.
@@ -90,7 +91,13 @@ class StubProvider extends AnalysisProvider {
 }
 
 class StubResearch extends AnalysisResearch {
-  pages = [{ ...DEFAULT_PAGE }];
+  pages: Array<{
+    source: 'website' | 'competitor';
+    url: string;
+    title: string;
+    fetchedAt: string;
+    excerpt: string;
+  }> = [{ ...DEFAULT_PAGE }];
   failures: Array<{ source: 'website' | 'competitor'; url: string; reason: string }> = [];
 
   async collect() {
@@ -101,6 +108,14 @@ class StubResearch extends AnalysisResearch {
       backend: 'direct' as const,
       firecrawlCredits: null,
     };
+  }
+}
+
+class StubLinkSource extends ContentLinkSource {
+  urls: string[] = ['https://example.com/wholesale', 'https://example.com/contacts'];
+
+  async sitemapUrls(): Promise<string[]> {
+    return this.urls;
   }
 }
 
@@ -146,6 +161,7 @@ describe('Content (integration, mocked provider)', () => {
   const provider = new StubProvider();
   const imageProvider = new StubImageProvider();
   const research = new StubResearch();
+  const linkSource = new StubLinkSource();
   const created: string[] = [];
   let assetDir: string;
 
@@ -185,6 +201,8 @@ describe('Content (integration, mocked provider)', () => {
       .useValue(provider)
       .overrideProvider(AnalysisResearch)
       .useValue(research)
+      .overrideProvider(ContentLinkSource)
+      .useValue(linkSource)
       .overrideProvider(ImageProvider)
       .useValue(imageProvider)
       .compile();
@@ -697,6 +715,7 @@ describe('Content (integration, mocked provider)', () => {
     provider.extraTopics = 0;
     research.pages = [{ ...DEFAULT_PAGE }];
     research.failures = [];
+    linkSource.urls = ['https://example.com/wholesale', 'https://example.com/contacts'];
   };
 
   const startDraft = async (projectId: string, topicId: string) =>
@@ -900,5 +919,107 @@ describe('Content (integration, mocked provider)', () => {
 
     const drafts = (await call('GET', `/projects/${projectId}/content/drafts`)).json() as Array<{ topicId: string }>;
     expect(drafts.filter((item) => item.topicId === topic.id)).toHaveLength(0);
+  });
+
+  // --- Link planning (TASK-0016, ROADMAP-05) -------------------------------
+
+  it('keeps only justified links and records the ones it removed', async () => {
+    resetStubs();
+    const projectId = await createProject('Links Policy');
+    const topic = await makeTopic(projectId, 'Links topic');
+    research.pages = [
+      { ...DEFAULT_PAGE },
+      {
+        source: 'competitor' as const,
+        url: 'https://wrap.test/textiles',
+        title: 'WRAP textiles',
+        fetchedAt: '2026-03-03T00:00:00.000Z',
+        excerpt: 'Reuse is growing.',
+      },
+    ];
+    provider.article = {
+      ...DEFAULT_ARTICLE,
+      bodyMarkdown: [
+        '# Heading',
+        '',
+        'See our [wholesale service](/wholesale) for bulk orders.',
+        '',
+        'We also list an [invented page](/does-not-exist).',
+        '',
+        'According to [WRAP](https://wrap.test/textiles) reuse is growing.',
+        '',
+        'And per [a study](https://invented.test/study) it doubles every year.',
+      ].join('\n'),
+    };
+
+    const run = await startDraft(projectId, topic.id);
+    expect(run.status).toBe('completed');
+    const draftId = (run.result as { draftId: string }).draftId;
+    const draft = (await call('GET', `/projects/${projectId}/content/drafts/${draftId}`)).json();
+
+    // The allowed internal page and the retrieved external source survive.
+    expect(draft.bodyMarkdown).toContain('](/wholesale)');
+    expect(draft.bodyMarkdown).toContain('](https://wrap.test/textiles)');
+    // The invented ones lose the link but keep the sentence readable.
+    expect(draft.bodyMarkdown).not.toContain('/does-not-exist)');
+    expect(draft.bodyMarkdown).not.toContain('https://invented.test/study');
+    expect(draft.bodyMarkdown).toContain('invented page');
+    expect(draft.bodyMarkdown).toContain('a study');
+
+    expect(run.linkPlan.source).toBe('sitemap');
+    expect(run.linkPlan.internal.map((entry: { url: string }) => entry.url)).toEqual(['/wholesale']);
+    expect(run.linkPlan.external.map((entry: { url: string }) => entry.url)).toEqual(['https://wrap.test/textiles']);
+    expect(run.linkPlan.dropped).toHaveLength(2);
+    expect(
+      run.linkPlan.dropped.every((entry: { reason: string }) => entry.reason.length > 0),
+    ).toBe(true);
+
+    // The draft view carries the same record, so it survives a reload.
+    expect(draft.linkPlan.internal).toHaveLength(1);
+    expect(draft.linkPlan.external).toHaveLength(1);
+  });
+
+  it('places no internal links when the project has no URL list at all', async () => {
+    resetStubs();
+    const projectId = await createProject('Links Empty');
+    const topic = await makeTopic(projectId, 'No list topic');
+    linkSource.urls = [];
+    research.pages = [];
+    research.failures = [{ source: 'website' as const, url: 'https://example.com', reason: 'Fetch failed.' }];
+    provider.article = { ...DEFAULT_ARTICLE, bodyMarkdown: '# Heading\n\nSee [contacts](/contacts) for details.' };
+
+    const run = await startDraft(projectId, topic.id);
+    expect(run.status).toBe('completed');
+    const draft = (await call('GET', `/projects/${projectId}/content/drafts/${(run.result as { draftId: string }).draftId}`)).json();
+
+    expect(draft.bodyMarkdown).not.toContain('](');
+    expect(draft.bodyMarkdown).toContain('contacts');
+    expect(run.linkPlan.source).toBe('none');
+    expect(run.linkPlan.candidates).toBe(0);
+    expect(run.linkPlan.dropped).toHaveLength(1);
+  });
+
+  it('falls back to the pages the research already retrieved', async () => {
+    resetStubs();
+    const projectId = await createProject('Links Fallback');
+    const topic = await makeTopic(projectId, 'Fallback topic');
+    linkSource.urls = [];
+    research.pages = [
+      {
+        source: 'website' as const,
+        url: 'https://example.com/collection',
+        title: 'Collection',
+        fetchedAt: '2026-03-04T00:00:00.000Z',
+        excerpt: 'Where to bring textiles.',
+      },
+    ];
+    provider.article = { ...DEFAULT_ARTICLE, bodyMarkdown: '# Heading\n\nFind a [collection point](/collection).' };
+
+    const run = await startDraft(projectId, topic.id);
+    const draft = (await call('GET', `/projects/${projectId}/content/drafts/${(run.result as { draftId: string }).draftId}`)).json();
+
+    expect(run.linkPlan.source).toBe('research');
+    expect(run.linkPlan.internal.map((entry: { url: string }) => entry.url)).toEqual(['/collection']);
+    expect(draft.bodyMarkdown).toContain('](/collection)');
   });
 });

@@ -15,7 +15,8 @@ import { buildArticlePrompt, buildTopicPrompt } from './content.prompts.js';
 import { guardArticleClaims } from './content.claims.js';
 import { applyResearchBudget } from './content.research.js';
 import { assembleGapDigest } from './content.digest.js';
-import type { BriefSnapshot, ContentSettingsSnapshot, GapDigest } from './content.types.js';
+import { applyLinkPolicy, buildLinkCandidates, ContentLinkSource } from './content.links.js';
+import type { BriefSnapshot, ContentSettingsSnapshot, GapDigest, LinkPlan } from './content.types.js';
 
 function estimateCost(inputTokens: number, outputTokens: number): number | null {
   const inputPrice = Number.parseFloat(process.env.ANALYSIS_COST_INPUT_PER_MTOK ?? '');
@@ -60,6 +61,7 @@ export class ContentRunner implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly provider: AnalysisProvider,
     private readonly research: AnalysisResearch,
+    private readonly linkSource: ContentLinkSource,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -162,7 +164,19 @@ export class ContentRunner implements OnModuleInit {
     const snapshot = run.inputSnapshot as unknown as ArticleSnapshot;
     const retrieved = await this.research.collect(snapshot.research);
     const { research, budget } = applyResearchBudget(retrieved);
-    const { system, user } = buildArticlePrompt(snapshot.settings, snapshot.brief, research, snapshot.knowledge ?? []);
+    const sitemapUrls = await this.linkSource.sitemapUrls(snapshot.settings.websiteUrl);
+    const candidates = buildLinkCandidates(
+      snapshot.settings.websiteUrl,
+      sitemapUrls,
+      retrieved.pages.filter((page) => page.source === 'website').map((page) => page.url),
+    );
+    const { system, user } = buildArticlePrompt(
+      snapshot.settings,
+      snapshot.brief,
+      research,
+      snapshot.knowledge ?? [],
+      candidates.paths,
+    );
     const model = await this.provider.analyze({
       system,
       user,
@@ -172,7 +186,15 @@ export class ContentRunner implements OnModuleInit {
     });
     const parsed = parseArticleOutput(model.output);
     const guarded = guardArticleClaims(parsed);
-    const output = guarded.output;
+    const linked = applyLinkPolicy(guarded.output.bodyMarkdown, {
+      origin: candidates.origin,
+      allowedPaths: candidates.paths,
+      allowedExternal: retrieved.pages.map((page) => page.url),
+      source: candidates.source,
+      candidates: candidates.total,
+      truncated: candidates.truncated,
+    });
+    const output = { ...guarded.output, bodyMarkdown: linked.bodyMarkdown };
 
     const brief = await this.prisma.articleBrief.findFirst({ where: { projectId: run.projectId, topicId: resolvedTopicId } });
     const aggregate = await this.prisma.articleDraft.aggregate({
@@ -219,7 +241,7 @@ export class ContentRunner implements OnModuleInit {
       pages: retrieved.pages,
       failures: retrieved.failures,
       websiteReadable: retrieved.websiteReadable,
-    }, digest);
+    }, digest, linked.plan);
     await this.prisma.contentRun.update({ where: { id: runId }, data: { draftId: draft.id } });
   }
 
@@ -229,6 +251,7 @@ export class ContentRunner implements OnModuleInit {
     result: Record<string, unknown>,
     evidence?: Record<string, unknown>,
     gapDigest?: GapDigest,
+    linkPlan?: LinkPlan,
   ): Promise<void> {
     await this.prisma.contentRun.update({
       where: { id: runId },
@@ -243,6 +266,7 @@ export class ContentRunner implements OnModuleInit {
         result: result as unknown as Prisma.InputJsonValue,
         ...(evidence ? { evidence: evidence as unknown as Prisma.InputJsonValue } : {}),
         ...(gapDigest ? { gapDigest: gapDigest as unknown as Prisma.InputJsonValue } : {}),
+        ...(linkPlan ? { linkPlan: linkPlan as unknown as Prisma.InputJsonValue } : {}),
         error: null,
       },
     });

@@ -136,6 +136,7 @@ export function buildArticlePrompt(
   brief: BriefSnapshot,
   research: PromptResearch,
   knowledge: string[] = [],
+  linkTargets: string[] = [],
 ): { system: string; user: string } {
   const pages = research.pages.length
     ? research.pages
@@ -172,6 +173,11 @@ export function buildArticlePrompt(
     'ACCESS FAILURES:',
     failures,
     '',
+    "INTERNAL LINK TARGETS (the project's own pages; these are the only internal links you may use):",
+    linkTargets.length
+      ? linkTargets.map((path) => `- ${path}`).join('\n')
+      : 'None available. Do not add internal links to this article.',
+    '',
     'GAP RESOLUTION (apply in this order, for every requirement marked "open"):',
     '1. If the research above answers it, use the finding and cite the exact source URL.',
     '2. Otherwise rewrite the article so the unsupported claim is unnecessary.',
@@ -196,6 +202,11 @@ export function buildArticlePrompt(
     '(for example "req-0"), with the action you took, a one-sentence rationale, and the exact',
     'URLs you relied on. Leave evidenceUrls empty when the resolution did not depend on',
     'research. Do not report a requirement you did not address.',
+    'Where a link genuinely helps the reader, add it: an internal link must come from the',
+    'INTERNAL LINK TARGETS list (use the exact path) and an external link must come from the',
+    'RESEARCH section above (use the exact URL). Usually two to four internal links are',
+    'enough; add more only when every one is useful. Never write a URL that is not in those',
+    'two places: a link that is not in the list is removed before the draft is saved.',
     `Limits: seoTitle ${CONTENT_LIMITS.seoTitle}, metaDescription ${CONTENT_LIMITS.metaDescription}, slug ${CONTENT_LIMITS.slug} characters.`,
     'Respond with json only, using exactly this shape:',
     JSON_EXAMPLE_ARTICLE,

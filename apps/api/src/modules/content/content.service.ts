@@ -22,6 +22,7 @@ import type {
   ContentSettingsSnapshot,
   DraftView,
   GapDigest,
+  LinkPlan,
   ProjectKnowledgeView,
   SourceRef,
   TopicRequirement,
@@ -65,6 +66,22 @@ function clean(value: string | null | undefined): string | null {
   if (value === undefined || value === null) return null;
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
+}
+
+/** Read-only artifacts a draft inherits from the run that generated it. */
+interface RunArtifacts {
+  gapDigest: GapDigest | null;
+  linkPlan: LinkPlan | null;
+}
+
+const EMPTY_ARTIFACTS: RunArtifacts = { gapDigest: null, linkPlan: null };
+
+function toArtifacts(run: { gapDigest: unknown; linkPlan: unknown } | null): RunArtifacts {
+  if (!run) return EMPTY_ARTIFACTS;
+  return {
+    gapDigest: (run.gapDigest as GapDigest | null) ?? null,
+    linkPlan: (run.linkPlan as LinkPlan | null) ?? null,
+  };
 }
 
 @Injectable()
@@ -227,14 +244,14 @@ export class ContentService {
     const topicIds = [...new Set(drafts.map((draft) => draft.topicId))];
     const briefs = await this.prisma.articleBrief.findMany({ where: { projectId, topicId: { in: topicIds } } });
     const byTopic = new Map(briefs.map((brief) => [brief.topicId, brief]));
-    const digests = await this.digestsForRuns(
+    const artifacts = await this.artifactsForRuns(
       drafts.map((draft) => draft.generationRunId).filter((id): id is string => Boolean(id)),
     );
     return drafts.map((draft) =>
       this.toDraftView(
         draft,
         this.isStale(draft, byTopic.get(draft.topicId)),
-        draft.generationRunId ? digests.get(draft.generationRunId) ?? null : null,
+        draft.generationRunId ? artifacts.get(draft.generationRunId) ?? EMPTY_ARTIFACTS : EMPTY_ARTIFACTS,
       ),
     );
   }
@@ -243,8 +260,8 @@ export class ContentService {
     await this.requireProject(projectId);
     const draft = await this.requireDraft(projectId, draftId);
     const brief = await this.prisma.articleBrief.findUnique({ where: { topicId: draft.topicId } });
-    const digest = await this.digestForRun(draft.generationRunId);
-    return this.toDraftView(draft, this.isStale(draft, brief ?? undefined), digest);
+    const artifacts = await this.artifactsForRun(draft.generationRunId);
+    return this.toDraftView(draft, this.isStale(draft, brief ?? undefined), artifacts);
   }
 
   async updateDraft(projectId: string, draftId: string, dto: UpdateDraftDto): Promise<DraftView> {
@@ -264,7 +281,7 @@ export class ContentService {
     if (dto.callToAction !== undefined) data.callToAction = clean(dto.callToAction);
     if (dto.unresolvedClaims !== undefined) data.unresolvedClaims = dto.unresolvedClaims as unknown as Prisma.InputJsonValue;
     const updated = await this.prisma.articleDraft.update({ where: { id: draftId }, data });
-    return this.toDraftView(updated, false, await this.digestForRun(updated.generationRunId));
+    return this.toDraftView(updated, false, await this.artifactsForRun(updated.generationRunId));
   }
 
   async markReady(projectId: string, draftId: string): Promise<DraftView> {
@@ -275,7 +292,7 @@ export class ContentService {
       where: { id: draftId },
       data: { status: 'ready_for_review', savedAt: new Date() },
     });
-    return this.toDraftView(draft, false, await this.digestForRun(draft.generationRunId));
+    return this.toDraftView(draft, false, await this.artifactsForRun(draft.generationRunId));
   }
 
   async startArticleGeneration(projectId: string, topicId: string): Promise<ContentRunView> {
@@ -480,25 +497,26 @@ export class ContentService {
     return draft;
   }
 
-  /** The gap digest of the run that produced a draft, or null when there is none. */
-  private async digestForRun(runId: string | null): Promise<GapDigest | null> {
-    if (!runId) return null;
-    const run = await this.prisma.contentRun.findUnique({ where: { id: runId }, select: { gapDigest: true } });
-    return (run?.gapDigest as unknown as GapDigest | null) ?? null;
+  /** The read-only artifacts of the run that produced a draft. */
+  private async artifactsForRun(runId: string | null): Promise<RunArtifacts> {
+    if (!runId) return EMPTY_ARTIFACTS;
+    const run = await this.prisma.contentRun.findUnique({
+      where: { id: runId },
+      select: { gapDigest: true, linkPlan: true },
+    });
+    return toArtifacts(run);
   }
 
   /** Batch variant used by the draft list, so listing does not query once per draft. */
-  private async digestsForRuns(runIds: string[]): Promise<Map<string, GapDigest>> {
+  private async artifactsForRuns(runIds: string[]): Promise<Map<string, RunArtifacts>> {
     const unique = [...new Set(runIds)];
-    if (unique.length === 0) return new Map();
+    const map = new Map<string, RunArtifacts>();
+    if (unique.length === 0) return map;
     const runs = await this.prisma.contentRun.findMany({
       where: { id: { in: unique } },
-      select: { id: true, gapDigest: true },
+      select: { id: true, gapDigest: true, linkPlan: true },
     });
-    const map = new Map<string, GapDigest>();
-    for (const run of runs) {
-      if (run.gapDigest) map.set(run.id, run.gapDigest as unknown as GapDigest);
-    }
+    for (const run of runs) map.set(run.id, toArtifacts(run));
     return map;
   }
 
@@ -645,7 +663,11 @@ export class ContentService {
     };
   }
 
-  private toDraftView(draft: Record<string, unknown>, stale = false, gapDigest: GapDigest | null = null): DraftView {
+  private toDraftView(
+    draft: Record<string, unknown>,
+    stale = false,
+    artifacts: RunArtifacts = EMPTY_ARTIFACTS,
+  ): DraftView {
     const record = draft as {
       id: string;
       projectId: string;
@@ -685,7 +707,8 @@ export class ContentService {
       sources: asSources(record.sources),
       unresolvedClaims: asStrings(record.unresolvedClaims),
       generationRunId: record.generationRunId,
-      gapDigest,
+      gapDigest: artifacts.gapDigest,
+      linkPlan: artifacts.linkPlan,
       savedAt: record.savedAt ? record.savedAt.toISOString() : null,
       stale,
       createdAt: record.createdAt.toISOString(),
@@ -719,6 +742,7 @@ export class ContentService {
       outputTokens: number | null;
       estimatedCostUsd: number | null;
       gapDigest: Json | null;
+      linkPlan: Json | null;
       startedAt: Date | null;
       finishedAt: Date | null;
       createdAt: Date;
@@ -740,6 +764,7 @@ export class ContentService {
       outputTokens: record.outputTokens,
       estimatedCostUsd: record.estimatedCostUsd,
       gapDigest: (record.gapDigest as unknown as GapDigest | null) ?? null,
+      linkPlan: (record.linkPlan as unknown as LinkPlan | null) ?? null,
       startedAt: record.startedAt ? record.startedAt.toISOString() : null,
       finishedAt: record.finishedAt ? record.finishedAt.toISOString() : null,
       createdAt: record.createdAt.toISOString(),

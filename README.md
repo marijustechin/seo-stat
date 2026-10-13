@@ -13,7 +13,9 @@ information requirements the writer resolves automatically, reusable project
 knowledge, versioned article drafts with optional cover images, and an explicit
 WordPress draft export). Article generation is unattended by default: unanswered
 questions never block a draft, and every run stores a read-only gap report of what
-was resolved, rewritten, omitted, or left to verify (ADR-0010, ADR-0011). CI
+was resolved, rewritten, omitted, or left to verify (ADR-0010, ADR-0011). It places
+internal and external links chosen only from real project URLs and sources retrieved
+in the same run (ADR-0012). CI
 produces a deployment artifact consumed by a server-side systemd user timer, so the
 app at https://192.168.8.50/seo-stat/ updates automatically from successful `main`
 builds. **No scheduling, published-content automation, reporting, or aggregate

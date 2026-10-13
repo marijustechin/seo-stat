@@ -129,7 +129,7 @@ export function DraftEditor({
         </div>
       )}
 
-      <GapDigestPanel digest={draft.gapDigest} />
+      <GapDigestPanel digest={draft.gapDigest} linkPlan={draft.linkPlan} />
 
       <div className="field">
         <label htmlFor="draft-title">Article title</label>

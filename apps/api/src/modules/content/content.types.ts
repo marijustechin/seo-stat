@@ -109,6 +109,36 @@ export interface GapDigest {
   neutralizedClaims: Array<{ field: string; claim: string; note: string }>;
 }
 
+export interface LinkPlanEntry {
+  url: string;
+  text: string;
+  kind: 'internal' | 'external';
+}
+
+export interface DroppedLinkEntry {
+  url: string;
+  text: string;
+  kind: 'internal' | 'external';
+  reason: string;
+}
+
+/**
+ * Read-only record of the links one article run placed. An internal link is kept
+ * only when it points at a page in the project's own URL list, and an external
+ * link only when the page was retrieved during that run. Anything else keeps its
+ * anchor text and loses the URL.
+ */
+export interface LinkPlan {
+  /** Where the project's URL list came from. */
+  source: 'sitemap' | 'research' | 'none';
+  /** Usable internal paths found, and how many were left out of the prompt. */
+  candidates: number;
+  truncated: number;
+  internal: LinkPlanEntry[];
+  external: LinkPlanEntry[];
+  dropped: DroppedLinkEntry[];
+}
+
 export interface BriefSnapshot {
   title: string;
   angle: string;
@@ -180,6 +210,8 @@ export interface DraftView {
   generationRunId: string | null;
   /** Read-only gap resolution digest of the run that produced this version. */
   gapDigest: GapDigest | null;
+  /** Read-only record of the links the run placed and dropped. */
+  linkPlan: LinkPlan | null;
   savedAt: string | null;
   /** True when the brief or topic answers changed after this draft was generated. */
   stale: boolean;
@@ -205,6 +237,8 @@ export interface ContentRunView {
   estimatedCostUsd: number | null;
   /** Present for article runs; null for topic runs and for runs predating it. */
   gapDigest: GapDigest | null;
+  /** Present for article runs; null for topic runs and for runs predating it. */
+  linkPlan: LinkPlan | null;
   startedAt: string | null;
   finishedAt: string | null;
   createdAt: string;

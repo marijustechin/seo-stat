@@ -49,6 +49,28 @@ export interface GapDigest {
   neutralizedClaims: Array<{ field: string; claim: string; note: string }>;
 }
 
+export interface LinkPlanEntry {
+  url: string;
+  text: string;
+  kind: 'internal' | 'external';
+}
+
+export interface DroppedLinkEntry {
+  url: string;
+  text: string;
+  kind: 'internal' | 'external';
+  reason: string;
+}
+
+export interface LinkPlan {
+  source: 'sitemap' | 'research' | 'none';
+  candidates: number;
+  truncated: number;
+  internal: LinkPlanEntry[];
+  external: LinkPlanEntry[];
+  dropped: DroppedLinkEntry[];
+}
+
 export interface TopicRequirement {
   id: string;
   question: string;
@@ -148,6 +170,7 @@ export interface ArticleDraft {
   sources: SourceRef[];
   unresolvedClaims: string[];
   gapDigest: GapDigest | null;
+  linkPlan: LinkPlan | null;
   generationRunId: string | null;
   savedAt: string | null;
   stale: boolean;
@@ -166,6 +189,7 @@ export interface ContentRun {
   evidence: unknown;
   result: unknown;
   gapDigest: GapDigest | null;
+  linkPlan: LinkPlan | null;
   error: string | null;
   provider: string | null;
   model: string | null;

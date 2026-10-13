@@ -38,4 +38,14 @@ export const CONTENT_LIMITS = {
    */
   researchMaxPages: 8,
   researchMaxInputChars: 30000,
+  /**
+   * Internal link planning. The writer may only link to pages from the project's
+   * own URL list; these limits bound that list and the links placed per article.
+   * The caps are generous on purpose: relevance, not the cap, decides how many
+   * links an article uses.
+   */
+  linkCandidates: 80,
+  linkMaxInternal: 6,
+  linkMaxExternal: 3,
+  sitemapMaxUrls: 500,
 } as const;

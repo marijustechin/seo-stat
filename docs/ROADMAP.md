@@ -72,6 +72,8 @@ Implemented and live:
   (TASK-0008).
 - Automatic gap resolution with a read-only per-run digest, so unanswered
   requirements never block a draft (TASK-0015, ROADMAP-04).
+- Internal and external link planning from a real project URL list, with any
+  unjustified link removed and recorded (TASK-0016, ROADMAP-05).
 - Article cover images with explicit provider selection and no fallback:
   Cloudflare Workers AI, Google Gemini, OpenAI Images (TASK-0009, TASK-0011,
   TASK-0012).
@@ -83,9 +85,10 @@ Implemented and live:
 **The unattended half does not exist.** There is no scheduler, no interval, no
 workflow execution, and no execution history, so nothing runs by itself: every run
 still has to be started by hand. Article generation itself no longer asks the
-operator anything, because ROADMAP-04 is done. There is also **no link planning**
-and **no measurement**, both of which the product intent requires. There is **no
-authentication**; see [ADR-0009](decisions/ADR-0009-no-authentication.md).
+operator anything, because ROADMAP-04 is done, and it plans its own links from a
+real URL list, because ROADMAP-05 is done. There is still **no measurement**, which
+the product intent requires. There is **no authentication**; see
+[ADR-0009](decisions/ADR-0009-no-authentication.md).
 
 Per-task detail and evidence: [tasks/INDEX.md](../tasks/INDEX.md).
 
@@ -154,18 +157,30 @@ recorded in a digest instead.
 ### ROADMAP-05 - Link planning (internal and external)
 
 Part of the original product intent, and **absent from both the code and the
-documentation**. An article needs a plan for internal links (to the site's own
-relevant pages) and, where useful, external links to sources.
+documentation** until TASK-0016. The requirement is deliberately modest: an article
+about wholesale should link to the wholesale page, to the contact page, and perhaps
+to one external source. Three is an example, not a limit.
 
-- Depends on: nothing. Internal linking needs an inventory of the site's existing
-  URLs, which the analysis research partially collects (up to six pages).
-- Size: M.
-- In scope: building and refreshing a per-project URL inventory; selecting
-  internal targets by relevance to the article; validating that a chosen target
-  exists; recording external sources with retrieval dates; refusing to invent URLs.
-- Open questions: how the URL inventory is discovered and kept current (sitemap,
-  crawl, or WordPress API); how many internal links per article; whether link
-  placement is model-decided or deterministic.
+- **Done: TASK-0016** ([record](../tasks/TASK-0016-internal-external-links.md)),
+  with the justification rule fixed by
+  [ADR-0012](decisions/ADR-0012-link-justification.md).
+- Depends on: nothing.
+- Size: **S**. Corrected from M: this is not an inventory subsystem, and an earlier
+  version of this item described one.
+- In scope: obtain a bounded list of the project's own URLs once per run (its
+  `sitemap.xml`, or the URLs the analysis research already discovered, or the
+  WordPress REST page list when the project is connected); let the writer place
+  links naturally with its own anchor text; **validate every internal link against
+  that list and drop any URL not in it**; allow external links only to URLs actually
+  retrieved during the run; record what was placed and what was dropped.
+- Out of scope: a crawl, a maintained URL index, link-graph analysis, or per-page
+  relevance scoring beyond what the writer does while writing.
+- The one rule that must not be skipped: **a URL is never invented.** No list means
+  no internal links, recorded as such - the same provenance rule the gap digest
+  already enforces for claims.
+- Open questions: whether the URL list is refreshed per run or cached per project;
+  a generous cap on internal and external links, with relevance rather than padding
+  deciding how many are used.
 - Constraint: fetched external material is untrusted research input, never
   instructions.
 
@@ -349,7 +364,6 @@ ADR before that item becomes a task.
 | Reporting reads live APIs versus stored snapshots | ROADMAP-10 | [docs/architecture.md](architecture.md) |
 | Report cadence, audience, and delivery channel | ROADMAP-10 | [docs/product.md](product.md) |
 | Authoritative keyword/topic sources for research | later content work | [docs/product.md](product.md) |
-| URL inventory source for internal linking | ROADMAP-05 | this file |
 | Authentication and access control model | ROADMAP-12 | [docs/architecture.md](architecture.md) |
 
 ## How this roadmap was corrected

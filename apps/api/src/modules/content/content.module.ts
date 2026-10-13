@@ -6,6 +6,7 @@ import { ContentService } from './content.service.js';
 import { ImageProvider } from './image.provider.js';
 import { createImageProvider } from './image.providers.js';
 import { ImageService } from './image.service.js';
+import { ContentLinkSource, SitemapLinkSource } from './content.links.js';
 
 @Module({
   imports: [AnalysisModule],
@@ -15,6 +16,7 @@ import { ImageService } from './image.service.js';
     ContentRunner,
     ImageService,
     { provide: ImageProvider, useFactory: () => createImageProvider() },
+    { provide: ContentLinkSource, useClass: SitemapLinkSource },
   ],
   exports: [ContentService, ImageService, ImageProvider],
 })

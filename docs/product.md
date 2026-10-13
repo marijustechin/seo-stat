@@ -53,6 +53,12 @@ project management, system settings, and aggregate costs. See
   resolved with which source, what was rewritten or omitted, and what remains to
   verify. Unanswered questions never block a draft, and the operator is never asked
   to answer before generation.
+- Generated articles place internal and external links. Internal targets come only
+  from the project's own URL list (its sitemap, or the pages already read) and
+  external targets only from sources retrieved in the same run; any link that
+  cannot be justified keeps its text and loses the URL, and the removal is
+  recorded. An article about wholesale can therefore link to the wholesale page,
+  the contact page, and one external source without any risk of invented addresses.
 - Article cover images per draft: generate from a visual brief with an explicitly
   selected provider and no fallback (Cloudflare Workers AI FLUX.1 [schnell] on the
   free plan, Google Gemini, or OpenAI Images) or upload; selected image, alt text,
